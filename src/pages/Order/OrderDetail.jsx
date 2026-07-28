@@ -333,7 +333,7 @@ const OrderDetail = () => {
       {/* Hóa đơn — chỉ hiện khi in (class invoice-print, xem index.css) */}
       <div className="invoice-print" style={{ display: "none" }}>
         <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <h1 style={{ margin: 0 }}>StepUp Shoes</h1>
+          <h1 style={{ margin: 0 }}>RYDE Shoes</h1>
           <p style={{ margin: 4 }}>Hóa đơn bán hàng</p>
           <p style={{ margin: 0, fontSize: 13 }}>
             Mã đơn: #{order._id.slice(-8).toUpperCase()} · Ngày: {formatDate(order.createdAt)}
