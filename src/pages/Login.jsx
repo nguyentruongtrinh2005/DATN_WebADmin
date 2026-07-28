@@ -56,7 +56,7 @@ const Login = () => {
       >
         <div style={{ textAlign: "center" }}>
           <Title level={2} style={{ color: "#2ecc71", margin: 0 }}>
-            StepUp Admin
+            RYDE Admin
           </Title>
           <Text type="secondary">Quản trị hệ thống bán giày</Text>
         </div>
@@ -103,7 +103,7 @@ const Login = () => {
 
           <div style={{ textAlign: "center" }}>
             <Text type="secondary" style={{ fontSize: 13 }}>
-              © {new Date().getFullYear()} StepUp. All rights reserved.
+              © {new Date().getFullYear()} RYDE. All rights reserved.
             </Text>
           </div>
         </Form>

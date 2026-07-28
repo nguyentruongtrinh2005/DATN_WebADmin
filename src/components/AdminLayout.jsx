@@ -56,7 +56,7 @@ const AdminLayout = () => {
               textTransform: "uppercase",
             }}
           >
-            {collapsed ? "SU" : "StepUp"}
+            {collapsed ? "RY" : "RYDE"}
           </Text>
         </div>
 
