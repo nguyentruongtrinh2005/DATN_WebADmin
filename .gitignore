@@ -5,10 +5,3 @@ dist/
 .DS_Store
 .idea/
 .vscode/
-
-# Cong cu AI / tro ly lap trinh — khong dua len repo
-.claude/
-CLAUDE.md
-AGENTS.md
-.cursor/
-.aider*

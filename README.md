@@ -6,8 +6,8 @@ Web quản trị cho hệ thống bán giày thể thao RYDE (đồ án tốt ng
 
 | Thành viên | Phụ trách |
 |---|---|
-| **Nguyễn Trường Trinh** | Đăng nhập & phân quyền, layout quản trị, thống kê, đơn hàng, sản phẩm & biến thể, voucher |
-| **Nguyễn Duy Long** | Thương hiệu, danh mục, người dùng, đánh giá & kiểm duyệt, chat, banner, thông báo, thanh toán, vận chuyển, khiếu nại |
+| **Nguyễn Trường Trinh** | 
+| **Nguyễn Duy Long** | 
 
 ## Công nghệ
 
@@ -22,18 +22,12 @@ Web quản trị cho hệ thống bán giày thể thao RYDE (đồ án tốt ng
 
 ```bash
 npm install
-cp .env.example .env    # Windows: copy .env.example .env
 npm run dev
 ```
 
-Mở `http://localhost:5173`.
 
 ### Cấu hình `.env`
 
-```env
-VITE_API_URL=http://localhost:3000/api
-VITE_STATIC_URL=http://localhost:3000
-```
 
 Sửa 2 dòng này nếu API chạy ở địa chỉ khác (máy khác trong LAN, hoặc server đã deploy).
 Sau khi sửa phải **khởi động lại** `npm run dev` — Vite chỉ đọc `.env` lúc chạy.
@@ -51,13 +45,6 @@ Sau khi sửa phải **khởi động lại** `npm run dev` — Vite chỉ đọ
 - **Đánh giá** — duyệt/từ chối, trả lời, cảnh báo nội dung xấu
 - **Chat, Banner, Thông báo, Thanh toán, Vận chuyển, Khiếu nại**
 
-## Tài khoản dùng thử
-
-Chạy `npm run seed` ở project API để tạo sẵn:
-
-| Email | Mật khẩu | Vai trò |
-|---|---|---|
-| `admin@ryde.vn` | `admin123` | admin |
 
 > Nhớ đổi mật khẩu này trước khi deploy thật.
 
