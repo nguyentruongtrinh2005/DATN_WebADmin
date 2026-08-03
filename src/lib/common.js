@@ -18,23 +18,45 @@ export const formatDate = (timestamp) => {
   });
 };
 
-// Nhãn tiếng Việt cho trạng thái đơn hàng
+// Nhãn tiếng Việt cho trạng thái đơn hàng.
+// Phải khớp đúng enum của API (models/Order.js):
+// pending | confirmed | shipping | delivered | cancelled
+// Trước đây web dùng "completed" và "refunded" -> API trả 400 "Trạng thái không hợp lệ".
 export const ORDER_STATUS_LABELS = {
   pending: "Chờ xử lý",
   confirmed: "Đã xác nhận",
   shipping: "Đang giao hàng",
-  completed: "Hoàn tất",
+  delivered: "Đã giao",
   cancelled: "Đã hủy",
-  refunded: "Đã hoàn tiền",
 };
 
 export const ORDER_STATUS_COLORS = {
   pending: "orange",
   confirmed: "blue",
   shipping: "cyan",
-  completed: "green",
+  delivered: "green",
   cancelled: "red",
-  refunded: "purple",
+};
+
+// Thứ tự các bước của một đơn hàng bình thường
+export const ORDER_STATUS_FLOW = [
+  "pending",
+  "confirmed",
+  "shipping",
+  "delivered",
+];
+
+// Nhãn cho trạng thái thanh toán
+export const PAYMENT_STATUS_LABELS = {
+  pending: "Chưa thanh toán",
+  paid: "Đã thanh toán",
+  failed: "Thanh toán lỗi",
+};
+
+export const PAYMENT_STATUS_COLORS = {
+  pending: "orange",
+  paid: "green",
+  failed: "red",
 };
 
 // API biến thể bắt buộc colorName + colorCode dạng HEX #RRGGBB,

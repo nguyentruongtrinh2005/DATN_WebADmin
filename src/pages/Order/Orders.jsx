@@ -15,6 +15,7 @@ import {
 } from "antd";
 import { SearchOutlined, EyeOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
 import { getOrders } from "../../services/order-service";
 import { getErrorMessage } from "../../lib/axios";
 import {
@@ -22,6 +23,8 @@ import {
   formatDate,
   ORDER_STATUS_LABELS,
   ORDER_STATUS_COLORS,
+  PAYMENT_STATUS_LABELS,
+  PAYMENT_STATUS_COLORS,
 } from "../../lib/common";
 
 const { Title } = Typography;
@@ -38,14 +41,7 @@ const Orders = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (searchText) params.search = searchText;
-      if (statusFilter) params.status = statusFilter;
-      if (dateRange) {
-        params.from = dateRange[0].format("YYYY-MM-DD");
-        params.to = dateRange[1].format("YYYY-MM-DD");
-      }
-      setOrders(await getOrders(params));
+      setOrders(await getOrders());
     } catch (error) {
       message.error(getErrorMessage(error));
     } finally {
@@ -55,9 +51,42 @@ const Orders = () => {
 
   useEffect(() => {
     fetchData();
-  }, [statusFilter, dateRange]);
+  }, []);
 
   const countByStatus = (status) => orders.filter((o) => o.status === status).length;
+
+  // API trả về toàn bộ đơn, không nhận tham số lọc -> lọc tại đây
+  const filtered = orders.filter((o) => {
+    if (statusFilter && o.status !== statusFilter) return false;
+
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      const created = dayjs(o.createdAt);
+      if (
+        created.isBefore(dateRange[0].startOf("day")) ||
+        created.isAfter(dateRange[1].endOf("day"))
+      ) {
+        return false;
+      }
+    }
+
+    if (searchText) {
+      const keyword = searchText.toLowerCase();
+      const haystack = [
+        o.shippingAddress?.fullName,
+        o.shippingAddress?.phone,
+        o.shippingAddress?.address,
+        o.user?.email,
+        o._id,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      if (!haystack.includes(keyword)) return false;
+    }
+
+    return true;
+  });
 
   const columns = [
     {
@@ -67,14 +96,39 @@ const Orders = () => {
       width: 110,
       render: (id) => <code>{id.slice(-8).toUpperCase()}</code>,
     },
-    { title: "Khách hàng", dataIndex: "customerName", key: "customerName" },
-    { title: "SĐT", dataIndex: "phone", key: "phone", width: 120 },
+    {
+      // Tên/SĐT nằm trong shippingAddress của đơn, không phải trường phẳng
+      title: "Khách hàng",
+      key: "customer",
+      render: (_, record) => record.shippingAddress?.fullName || "—",
+    },
+    {
+      title: "SĐT",
+      key: "phone",
+      width: 120,
+      render: (_, record) => record.shippingAddress?.phone || "—",
+    },
     {
       title: "Tổng tiền",
-      dataIndex: "totalPrice",
-      key: "totalPrice",
+      dataIndex: "total",
+      key: "total",
       render: (v) => <strong>{formatCurrency(v)}</strong>,
-      sorter: (a, b) => a.totalPrice - b.totalPrice,
+      sorter: (a, b) => a.total - b.total,
+    },
+    {
+      title: "Thanh toán",
+      key: "payment",
+      width: 150,
+      render: (_, record) => (
+        <div>
+          <Tag color={PAYMENT_STATUS_COLORS[record.paymentStatus]}>
+            {PAYMENT_STATUS_LABELS[record.paymentStatus] || record.paymentStatus}
+          </Tag>
+          <div style={{ fontSize: 12, color: "#999" }}>
+            {record.paymentMethod?.toUpperCase()}
+          </div>
+        </div>
+      ),
     },
     {
       title: "Trạng thái",
@@ -121,13 +175,13 @@ const Orders = () => {
           <Statistic title="Đang giao" value={countByStatus("shipping")} />
         </Col>
         <Col span={4}>
-          <Statistic title="Hoàn tất" value={countByStatus("completed")} />
+          <Statistic title="Đã giao" value={countByStatus("delivered")} />
         </Col>
         <Col span={4}>
           <Statistic title="Đã hủy" value={countByStatus("cancelled")} />
         </Col>
         <Col span={4}>
-          <Statistic title="Đã hoàn tiền" value={countByStatus("refunded")} />
+          <Statistic title="Tổng đơn" value={orders.length} />
         </Col>
       </Row>
 
@@ -138,7 +192,6 @@ const Orders = () => {
             prefix={<SearchOutlined />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            onPressEnter={fetchData}
             allowClear
           />
         </Col>
@@ -164,7 +217,7 @@ const Orders = () => {
         </Col>
       </Row>
 
-      <Table columns={columns} dataSource={orders} rowKey="_id" loading={loading} />
+      <Table columns={columns} dataSource={filtered} rowKey="_id" loading={loading} />
     </Card>
   );
 };

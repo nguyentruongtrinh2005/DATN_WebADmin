@@ -10,11 +10,8 @@ import {
   Space,
   Steps,
   Table,
-  Timeline,
   Descriptions,
   Modal,
-  Input,
-  InputNumber,
   Spin,
   Alert,
   Image,
@@ -26,49 +23,53 @@ import {
   CheckCircleOutlined,
   CarOutlined,
   CloseCircleOutlined,
-  DollarOutlined,
 } from "@ant-design/icons";
-import {
-  getOrderById,
-  updateOrderStatus,
-  refundOrder,
-} from "../../services/order-service";
+import { getOrderById, updateOrderStatus } from "../../services/order-service";
 import { getErrorMessage, toImageUrl } from "../../lib/axios";
 import {
   formatCurrency,
   formatDate,
   ORDER_STATUS_LABELS,
   ORDER_STATUS_COLORS,
+  ORDER_STATUS_FLOW,
+  PAYMENT_STATUS_LABELS,
+  PAYMENT_STATUS_COLORS,
 } from "../../lib/common";
-import { useAuthStore } from "../../store/useAuthStore";
 
 const { Title, Text } = Typography;
 
-// Bước tiếp theo cho từng trạng thái
+// Bước tiếp theo cho từng trạng thái.
+// Trạng thái cuối là "delivered" theo enum của API (không phải "completed").
 const NEXT_STATUS = {
-  pending: { status: "confirmed", label: "Xác nhận đơn", icon: <CheckCircleOutlined /> },
-  confirmed: { status: "shipping", label: "Giao hàng", icon: <CarOutlined /> },
-  shipping: { status: "completed", label: "Hoàn tất", icon: <CheckCircleOutlined /> },
+  pending: {
+    status: "confirmed",
+    label: "Xác nhận đơn",
+    icon: <CheckCircleOutlined />,
+  },
+  confirmed: {
+    status: "shipping",
+    label: "Giao hàng",
+    icon: <CarOutlined />,
+  },
+  shipping: {
+    status: "delivered",
+    label: "Đã giao xong",
+    icon: <CheckCircleOutlined />,
+  },
 };
 
 const OrderDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [refundModalOpen, setRefundModalOpen] = useState(false);
-  const [refundReason, setRefundReason] = useState("");
-  const [refundAmount, setRefundAmount] = useState(null);
 
   const fetchOrder = async () => {
     setLoading(true);
     try {
-      const data = await getOrderById(id);
-      setOrder(data);
-      setRefundAmount(data.totalPrice);
+      setOrder(await getOrderById(id));
     } catch (error) {
       message.error(getErrorMessage(error));
     } finally {
@@ -80,10 +81,10 @@ const OrderDetail = () => {
     fetchOrder();
   }, [id]);
 
-  const changeStatus = async (status, note = "") => {
+  const changeStatus = async (status) => {
     setActionLoading(true);
     try {
-      await updateOrderStatus(id, status, note);
+      await updateOrderStatus(id, status);
       message.success(`Đã chuyển sang "${ORDER_STATUS_LABELS[status]}"`);
       fetchOrder();
     } catch (error) {
@@ -96,26 +97,12 @@ const OrderDetail = () => {
   const handleCancel = () => {
     Modal.confirm({
       title: "Hủy đơn hàng",
-      content: "Bạn có chắc muốn hủy đơn hàng này? Tồn kho sẽ được hoàn lại.",
+      content: "Bạn có chắc muốn hủy đơn hàng này?",
       okText: "Hủy đơn",
       okButtonProps: { danger: true },
       cancelText: "Không",
-      onOk: () => changeStatus("cancelled", "Hủy bởi quản trị viên"),
+      onOk: () => changeStatus("cancelled"),
     });
-  };
-
-  const handleRefund = async () => {
-    setActionLoading(true);
-    try {
-      await refundOrder(id, { amount: refundAmount, reason: refundReason });
-      message.success("Hoàn tiền thành công");
-      setRefundModalOpen(false);
-      fetchOrder();
-    } catch (error) {
-      message.error(getErrorMessage(error));
-    } finally {
-      setActionLoading(false);
-    }
   };
 
   if (loading || !order) {
@@ -126,10 +113,12 @@ const OrderDetail = () => {
     );
   }
 
-  const stepIndex = ["pending", "confirmed", "shipping", "completed"].indexOf(order.status);
+  const stepIndex = ORDER_STATUS_FLOW.indexOf(order.status);
   const nextAction = NEXT_STATUS[order.status];
   const canCancel = ["pending", "confirmed"].includes(order.status);
-  const canRefund = order.status === "cancelled" && user?.role === "admin";
+
+  // Thông tin giao hàng nằm trong order.shippingAddress
+  const ship = order.shippingAddress || {};
 
   const itemColumns = [
     {
@@ -137,13 +126,20 @@ const OrderDetail = () => {
       key: "name",
       render: (_, item) => (
         <Space>
-          {item.image && (
-            <Image src={toImageUrl(item.image)} width={48} height={48} style={{ objectFit: "cover", borderRadius: 4 }} />
+          {item.product?.image && (
+            <Image
+              src={toImageUrl(item.product.image)}
+              width={48}
+              height={48}
+              style={{ objectFit: "cover", borderRadius: 4 }}
+            />
           )}
           <div>
-            <div>{item.name}</div>
+            <div>{item.product?.name || "Sản phẩm đã bị xoá"}</div>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {item.color} / Size {item.size}
+              {item.variant
+                ? `${item.variant.colorName} / Size ${item.variant.size}`
+                : "—"}
             </Text>
           </div>
         </Space>
@@ -154,9 +150,28 @@ const OrderDetail = () => {
     {
       title: "Thành tiền",
       key: "subtotal",
-      render: (_, item) => <strong>{formatCurrency(item.price * item.quantity)}</strong>,
+      render: (_, item) => (
+        <strong>{formatCurrency(item.price * item.quantity)}</strong>
+      ),
     },
   ];
+
+  const summaryRow = (label, value, strong = false) => (
+    <Table.Summary.Row>
+      <Table.Summary.Cell colSpan={3} align="right">
+        {strong ? <strong>{label}</strong> : label}
+      </Table.Summary.Cell>
+      <Table.Summary.Cell>
+        {strong ? (
+          <Text strong style={{ color: "#f5222d", fontSize: 16 }}>
+            {formatCurrency(value)}
+          </Text>
+        ) : (
+          formatCurrency(value)
+        )}
+      </Table.Summary.Cell>
+    </Table.Summary.Row>
+  );
 
   return (
     <div>
@@ -186,17 +201,13 @@ const OrderDetail = () => {
             </Button>
           )}
           {canCancel && (
-            <Button danger icon={<CloseCircleOutlined />} onClick={handleCancel}>
-              Hủy đơn
-            </Button>
-          )}
-          {canRefund && (
             <Button
-              icon={<DollarOutlined />}
-              style={{ borderColor: "#722ed1", color: "#722ed1" }}
-              onClick={() => setRefundModalOpen(true)}
+              danger
+              icon={<CloseCircleOutlined />}
+              loading={actionLoading}
+              onClick={handleCancel}
             >
-              Hoàn tiền
+              Hủy đơn
             </Button>
           )}
           <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
@@ -204,33 +215,27 @@ const OrderDetail = () => {
           </Button>
         </Space>
 
-        {["cancelled", "refunded"].includes(order.status) ? (
+        {order.status === "cancelled" ? (
           <Alert
             style={{ marginTop: 16 }}
-            type={order.status === "refunded" ? "info" : "warning"}
-            message={
-              order.status === "refunded"
-                ? `Đã hoàn tiền ${formatCurrency(order.refund?.amount || 0)} — ${order.refund?.reason || ""}`
-                : "Đơn hàng đã bị hủy"
-            }
+            type="warning"
+            showIcon
+            message="Đơn hàng đã bị hủy"
           />
         ) : (
           <Steps
             style={{ marginTop: 24 }}
             current={stepIndex}
-            items={[
-              { title: "Chờ xử lý" },
-              { title: "Đã xác nhận" },
-              { title: "Đang giao hàng" },
-              { title: "Hoàn tất" },
-            ]}
+            items={ORDER_STATUS_FLOW.map((s) => ({
+              title: ORDER_STATUS_LABELS[s],
+            }))}
           />
         )}
       </Card>
 
       <Row gutter={16}>
         <Col xs={24} lg={16}>
-          <Card title="Sản phẩm" style={{ marginBottom: 16 }}>
+          <Card title="Sản phẩm">
             <Table
               columns={itemColumns}
               dataSource={order.items}
@@ -238,97 +243,55 @@ const OrderDetail = () => {
               pagination={false}
               summary={() => (
                 <>
-                  <Table.Summary.Row>
-                    <Table.Summary.Cell colSpan={3} align="right">
-                      Phí vận chuyển
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell>{formatCurrency(order.shippingFee)}</Table.Summary.Cell>
-                  </Table.Summary.Row>
-                  <Table.Summary.Row>
-                    <Table.Summary.Cell colSpan={3} align="right">
-                      <strong>Tổng cộng</strong>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell>
-                      <Text strong style={{ color: "#f5222d", fontSize: 16 }}>
-                        {formatCurrency(order.totalPrice)}
-                      </Text>
-                    </Table.Summary.Cell>
-                  </Table.Summary.Row>
+                  {summaryRow("Tiền hàng", order.subtotal)}
+                  {summaryRow("Phí vận chuyển", order.shippingFee)}
+                  {order.discount > 0 && summaryRow("Giảm giá", -order.discount)}
+                  {summaryRow("Tổng cộng", order.total, true)}
                 </>
               )}
-            />
-          </Card>
-
-          <Card title="Lịch sử trạng thái">
-            <Timeline
-              items={(order.statusHistory || []).map((h) => ({
-                color: ORDER_STATUS_COLORS[h.status] === "red" ? "red" : "green",
-                children: (
-                  <div>
-                    <Text strong>{ORDER_STATUS_LABELS[h.status]}</Text>
-                    {h.note && <Text type="secondary"> — {h.note}</Text>}
-                    <div style={{ fontSize: 12, color: "#999" }}>
-                      {formatDate(h.changedAt)}
-                      {h.changedBy?.fullName && ` · ${h.changedBy.fullName}`}
-                    </div>
-                  </div>
-                ),
-              }))}
             />
           </Card>
         </Col>
 
         <Col xs={24} lg={8}>
-          <Card title="Thông tin khách hàng">
+          <Card title="Thông tin khách hàng" style={{ marginBottom: 16 }}>
             <Descriptions column={1} size="small">
-              <Descriptions.Item label="Họ tên">{order.customerName}</Descriptions.Item>
-              <Descriptions.Item label="SĐT">{order.phone}</Descriptions.Item>
-              <Descriptions.Item label="Email">{order.email || "—"}</Descriptions.Item>
-              <Descriptions.Item label="Địa chỉ">{order.address}</Descriptions.Item>
-              <Descriptions.Item label="Ghi chú">{order.note || "—"}</Descriptions.Item>
-              <Descriptions.Item label="Thanh toán">
-                {order.paymentMethod?.toUpperCase()}
+              <Descriptions.Item label="Họ tên">
+                {ship.fullName || "—"}
               </Descriptions.Item>
-              <Descriptions.Item label="Vận chuyển">
-                {order.shippingProvider?.toUpperCase() || "—"}
+              <Descriptions.Item label="SĐT">
+                {ship.phone || "—"}
               </Descriptions.Item>
-              <Descriptions.Item label="Ngày đặt">{formatDate(order.createdAt)}</Descriptions.Item>
+              <Descriptions.Item label="Email">
+                {order.user?.email || "—"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Địa chỉ">
+                {ship.address || "—"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Ngày đặt">
+                {formatDate(order.createdAt)}
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+
+          <Card title="Thanh toán">
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label="Phương thức">
+                {order.paymentMethod?.toUpperCase() || "—"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái">
+                <Tag color={PAYMENT_STATUS_COLORS[order.paymentStatus]}>
+                  {PAYMENT_STATUS_LABELS[order.paymentStatus] ||
+                    order.paymentStatus}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Mã giao dịch">
+                {order.transactionId || "—"}
+              </Descriptions.Item>
             </Descriptions>
           </Card>
         </Col>
       </Row>
-
-      {/* Modal hoàn tiền */}
-      <Modal
-        title="Hoàn tiền đơn hàng"
-        open={refundModalOpen}
-        onCancel={() => setRefundModalOpen(false)}
-        onOk={handleRefund}
-        okText="Xác nhận hoàn tiền"
-        cancelText="Hủy"
-        confirmLoading={actionLoading}
-      >
-        <div style={{ marginBottom: 12 }}>
-          <Text>Số tiền hoàn:</Text>
-          <InputNumber
-            style={{ width: "100%", marginTop: 4 }}
-            min={0}
-            max={order.totalPrice}
-            value={refundAmount}
-            onChange={setRefundAmount}
-            formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-          />
-        </div>
-        <div>
-          <Text>Lý do:</Text>
-          <Input.TextArea
-            rows={3}
-            value={refundReason}
-            onChange={(e) => setRefundReason(e.target.value)}
-            placeholder="Lý do hoàn tiền..."
-          />
-        </div>
-      </Modal>
 
       {/* Hóa đơn — chỉ hiện khi in (class invoice-print, xem index.css) */}
       <div className="invoice-print" style={{ display: "none" }}>
@@ -336,17 +299,22 @@ const OrderDetail = () => {
           <h1 style={{ margin: 0 }}>RYDE Shoes</h1>
           <p style={{ margin: 4 }}>Hóa đơn bán hàng</p>
           <p style={{ margin: 0, fontSize: 13 }}>
-            Mã đơn: #{order._id.slice(-8).toUpperCase()} · Ngày: {formatDate(order.createdAt)}
+            Mã đơn: #{order._id.slice(-8).toUpperCase()} · Ngày:{" "}
+            {formatDate(order.createdAt)}
           </p>
         </div>
 
         <p>
-          <strong>Khách hàng:</strong> {order.customerName} — {order.phone}
+          <strong>Khách hàng:</strong> {ship.fullName} — {ship.phone}
           <br />
-          <strong>Địa chỉ:</strong> {order.address}
+          <strong>Địa chỉ:</strong> {ship.address}
         </p>
 
-        <table style={{ width: "100%", borderCollapse: "collapse" }} border="1" cellPadding="6">
+        <table
+          style={{ width: "100%", borderCollapse: "collapse" }}
+          border="1"
+          cellPadding="6"
+        >
           <thead>
             <tr>
               <th>Sản phẩm</th>
@@ -359,9 +327,11 @@ const OrderDetail = () => {
           <tbody>
             {order.items.map((item, i) => (
               <tr key={i}>
-                <td>{item.name}</td>
+                <td>{item.product?.name}</td>
                 <td>
-                  {item.color} / {item.size}
+                  {item.variant
+                    ? `${item.variant.colorName} / ${item.variant.size}`
+                    : "—"}
                 </td>
                 <td>{formatCurrency(item.price)}</td>
                 <td style={{ textAlign: "center" }}>{item.quantity}</td>
@@ -379,7 +349,7 @@ const OrderDetail = () => {
                 <strong>Tổng cộng</strong>
               </td>
               <td>
-                <strong>{formatCurrency(order.totalPrice)}</strong>
+                <strong>{formatCurrency(order.total)}</strong>
               </td>
             </tr>
           </tbody>
