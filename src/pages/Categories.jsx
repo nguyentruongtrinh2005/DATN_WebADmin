@@ -137,7 +137,7 @@ const Categories = () => {
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="Danh mục không xoá hẳn được — sản phẩm cũ vẫn tham chiếu tới nó. Dùng công tắc để ẩn / hiện."
+        message="Danh mục không xoá hẳn được — sản phẩm cũ vẫn tham chiếu tới nó."
       />
 
       <Table

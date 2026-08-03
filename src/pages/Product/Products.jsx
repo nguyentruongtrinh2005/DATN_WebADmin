@@ -4,7 +4,6 @@ import {
   Input,
   Button,
   Space,
-  Popconfirm,
   Card,
   Typography,
   Tag,
@@ -13,21 +12,22 @@ import {
   Descriptions,
   Spin,
   Empty,
+  Alert,
   message,
 } from "antd";
 import {
   PlusOutlined,
   EditOutlined,
-  DeleteOutlined,
   SearchOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import {
   getProducts,
-  deleteProduct,
+  setProductStatus,
   getVariantsByProduct,
 } from "../../services/product-service";
+import StatusSwitch from "../../components/StatusSwitch";
 import { getErrorMessage, toImageUrl } from "../../lib/axios";
 import { formatCurrency } from "../../lib/common";
 
@@ -60,10 +60,12 @@ const Products = () => {
     fetchData();
   }, []);
 
-  const handleDelete = async (id) => {
+  const handleToggleStatus = async (id, nextStatus) => {
     try {
-      await deleteProduct(id);
-      message.success("Xóa sản phẩm thành công");
+      await setProductStatus(id, nextStatus);
+      message.success(
+        nextStatus === "active" ? "Đã hiện lại sản phẩm" : "Đã ẩn sản phẩm"
+      );
       fetchData();
     } catch (error) {
       message.error(getErrorMessage(error));
@@ -159,9 +161,22 @@ const Products = () => {
       sorter: (a, b) => a.sold - b.sold,
     },
     {
+      title: "Trạng thái",
+      key: "status",
+      width: 190,
+      align: "center",
+      render: (_, record) => (
+        <StatusSwitch
+          status={record.status}
+          confirmOff="Sản phẩm sẽ không còn hiện trong app khách hàng."
+          onChange={(next) => handleToggleStatus(record._id, next)}
+        />
+      ),
+    },
+    {
       title: "Thao tác",
       key: "action",
-      width: 170,
+      width: 120,
       align: "center",
       render: (_, record) => (
         <Space>
@@ -170,14 +185,6 @@ const Products = () => {
             icon={<EditOutlined />}
             onClick={() => navigate(`/products/edit/${record._id}`)}
           />
-          <Popconfirm
-            title="Xóa sản phẩm này?"
-            okText="Xóa"
-            cancelText="Hủy"
-            onConfirm={() => handleDelete(record._id)}
-          >
-            <Button danger icon={<DeleteOutlined />} />
-          </Popconfirm>
         </Space>
       ),
     },
@@ -207,7 +214,22 @@ const Products = () => {
         style={{ marginBottom: 16 }}
       />
 
-      <Table columns={columns} dataSource={filtered} rowKey="_id" loading={loading} />
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="Tắt công tắc là ẩn sản phẩm khỏi app khách hàng, dữ liệu và đơn hàng cũ vẫn giữ nguyên."
+      />
+
+      <Table
+        columns={columns}
+        dataSource={filtered}
+        rowKey="_id"
+        loading={loading}
+        rowClassName={(record) =>
+          record.status === "inactive" ? "row-inactive" : ""
+        }
+      />
 
       <Drawer
         title="Chi tiết sản phẩm"

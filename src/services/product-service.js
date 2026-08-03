@@ -26,12 +26,25 @@ export const activeProduct = async (id) =>
 export const destroyProduct = async (id) =>
   unwrap(await api.delete(`/admin/products/${id}`));
 
-// Nút "Xóa" trên giao diện map sang ẩn, tránh mất dữ liệu do lỡ tay
-export const deleteProduct = hideProduct;
+// Đổi trạng thái theo giá trị mong muốn — dùng cho công tắc trên giao diện
+export const setProductStatus = async (id, status) =>
+  status === "active" ? activeProduct(id) : hideProduct(id);
 
 // Biến thể (size / màu / tồn kho)
-export const getVariantsByProduct = async (productId) =>
-  unwrap(await api.get(`/admin/product-variants/product/${productId}`));
+//
+// API admin không có route lấy biến thể theo sản phẩm. Route công khai
+// /product-variants/product/:id thì chỉ trả biến thể active và còn 404 nếu
+// sản phẩm đang ẩn -> trang quản trị không dùng được.
+// Nên lấy toàn bộ từ /admin/product-variants rồi lọc tại đây.
+export const getVariantsByProduct = async (productId) => {
+  const all = await unwrap(await api.get("/admin/product-variants"));
+
+  return all.filter((v) => {
+    // product đã được populate thành object, phòng trường hợp trả về id thô
+    const id = v.product?._id || v.product;
+    return String(id) === String(productId);
+  });
+};
 
 export const createVariant = async (data) =>
   unwrap(await api.post("/admin/product-variants", data));
@@ -46,14 +59,11 @@ export const deleteVariant = async (id) =>
 export const restoreVariant = async (id) =>
   unwrap(await api.patch(`/admin/product-variants/${id}/restore`));
 
-// Upload ảnh, trả về { url } dạng "/uploads/xxx.jpg"
-// Không tự set Content-Type: để axios tự sinh kèm boundary của multipart,
-// đặt tay sẽ thiếu boundary và multer parse hỏng.
-export const uploadImage = async (file) => {
-  const formData = new FormData();
-  formData.append("image", file);
-
-  const res = await api.post("/upload", formData);
-
-  return unwrap(res);
+// API chưa có route POST /upload (và chưa cài multer) nên không upload file được.
+// Trang Sản phẩm và Thương hiệu đã chuyển sang nhập ảnh bằng link.
+// Giữ hàm này cho trang Banners còn import — báo lỗi rõ ràng thay vì 404 khó hiểu.
+export const uploadImage = async () => {
+  throw new Error(
+    "API chưa hỗ trợ tải ảnh lên. Hãy dùng link ảnh (https://...) thay cho việc chọn file."
+  );
 };
