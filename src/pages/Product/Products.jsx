@@ -214,12 +214,12 @@ const Products = () => {
         style={{ marginBottom: 16 }}
       />
 
-      <Alert
+      {/* <Alert
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="Tắt công tắc là ẩn sản phẩm khỏi app khách hàng, dữ liệu và đơn hàng cũ vẫn giữ nguyên."
-      />
+        message="Ẩn sản phẩm khỏi app khách hàng, dữ liệu và đơn hàng cũ vẫn giữ nguyên."
+      /> */}
 
       <Table
         columns={columns}
