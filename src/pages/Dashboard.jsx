@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   Row,
@@ -12,6 +12,7 @@ import {
   Typography,
   List,
   Avatar,
+  Alert,
   message,
 } from "antd";
 import {
@@ -33,12 +34,13 @@ import {
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import {
-  getDashboardStats,
-  getRevenue,
-  getTopProducts,
-  getRecentOrders,
+  getStatsSource,
+  buildOverview,
+  buildRevenueSeries,
+  buildTopProducts,
+  buildRecentOrders,
 } from "../services/stats-service";
-import { getErrorMessage } from "../lib/axios";
+import { getErrorMessage, toImageUrl } from "../lib/axios";
 import {
   formatCurrency,
   formatDate,
@@ -52,25 +54,21 @@ const { RangePicker } = DatePicker;
 const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState(null);
-  const [revenueData, setRevenueData] = useState([]);
-  const [topProducts, setTopProducts] = useState([]);
-  const [recentOrders, setRecentOrders] = useState([]);
+
+  // Dữ liệu thô lấy một lần, mọi con số bên dưới tính từ đây
+  const [source, setSource] = useState(null);
+
   const [groupBy, setGroupBy] = useState("month");
-  const [dateRange, setDateRange] = useState([dayjs().subtract(6, "month"), dayjs()]);
+  const [dateRange, setDateRange] = useState([
+    dayjs().subtract(6, "month"),
+    dayjs(),
+  ]);
 
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
       try {
-        const [statsData, top, recent] = await Promise.all([
-          getDashboardStats(),
-          getTopProducts(5),
-          getRecentOrders(5),
-        ]);
-        setStats(statsData);
-        setTopProducts(top);
-        setRecentOrders(recent);
+        setSource(await getStatsSource());
       } catch (error) {
         message.error(getErrorMessage(error));
       } finally {
@@ -81,24 +79,35 @@ const Dashboard = () => {
     fetchAll();
   }, []);
 
-  useEffect(() => {
-    const fetchRevenue = async () => {
-      try {
-        const data = await getRevenue({
-          groupBy,
-          from: dateRange[0].format("YYYY-MM-DD"),
-          to: dateRange[1].format("YYYY-MM-DD"),
-        });
-        setRevenueData(data);
-      } catch (error) {
-        message.error(getErrorMessage(error));
-      }
-    };
+  const stats = useMemo(
+    () => (source ? buildOverview(source) : null),
+    [source]
+  );
 
-    fetchRevenue();
-  }, [groupBy, dateRange]);
+  const revenueData = useMemo(
+    () =>
+      source
+        ? buildRevenueSeries(
+            source.orders,
+            groupBy,
+            dateRange[0],
+            dateRange[1]
+          )
+        : [],
+    [source, groupBy, dateRange]
+  );
 
-  if (loading) {
+  const topProducts = useMemo(
+    () => (source ? buildTopProducts(source.orders, 5) : []),
+    [source]
+  );
+
+  const recentOrders = useMemo(
+    () => (source ? buildRecentOrders(source.orders, 5) : []),
+    [source]
+  );
+
+  if (loading || !stats) {
     return (
       <div style={{ textAlign: "center", padding: 100 }}>
         <Spin size="large" />
@@ -109,20 +118,22 @@ const Dashboard = () => {
   const orderColumns = [
     {
       title: "Khách hàng",
-      dataIndex: "customerName",
-      key: "customerName",
+      key: "customer",
+      render: (_, record) => record.shippingAddress?.fullName || "—",
     },
     {
       title: "Tổng tiền",
-      dataIndex: "totalPrice",
-      key: "totalPrice",
+      dataIndex: "total",
+      key: "total",
       render: (v) => formatCurrency(v),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (s) => <Tag color={ORDER_STATUS_COLORS[s]}>{ORDER_STATUS_LABELS[s]}</Tag>,
+      render: (s) => (
+        <Tag color={ORDER_STATUS_COLORS[s]}>{ORDER_STATUS_LABELS[s]}</Tag>
+      ),
     },
     {
       title: "Ngày đặt",
@@ -136,48 +147,62 @@ const Dashboard = () => {
     <div>
       <Title level={3}>Thống kê tổng quan</Title>
 
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="Số liệu được tính trực tiếp từ danh sách đơn hàng và sản phẩm. Doanh thu không tính đơn đã hủy."
+      />
+
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
               title="Tổng doanh thu"
-              value={stats?.revenue?.total || 0}
+              value={stats.revenue}
               formatter={(v) => formatCurrency(v)}
               prefix={<DollarOutlined style={{ color: "#52c41a" }} />}
             />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Tổng đơn hàng"
-              value={stats?.orders?.total || 0}
-              prefix={<ShoppingCartOutlined style={{ color: "#1890ff" }} />}
-            />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Chờ xử lý: {stats?.orders?.pending || 0} · Hoàn tất:{" "}
-              {stats?.orders?.completed || 0} · Đã hủy: {stats?.orders?.cancelled || 0}
+              Đã thanh toán: {formatCurrency(stats.paidRevenue)}
             </Text>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Người dùng"
-              value={stats?.users?.total || 0}
+              title="Tổng đơn hàng"
+              value={stats.orders.total}
+              prefix={<ShoppingCartOutlined style={{ color: "#1890ff" }} />}
+            />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Chờ xử lý: {stats.orders.pending} · Đã giao:{" "}
+              {stats.orders.delivered} · Đã hủy: {stats.orders.cancelled}
+            </Text>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Khách đã mua hàng"
+              value={stats.customers}
               prefix={<UserOutlined style={{ color: "#722ed1" }} />}
             />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              API chưa có thống kê người dùng
+            </Text>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
               title="Sản phẩm"
-              value={stats?.products?.total || 0}
+              value={stats.products.total}
               prefix={<DropboxOutlined style={{ color: "#fa8c16" }} />}
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Tồn kho: {stats?.products?.totalStock || 0} đôi
+              Đang bán: {stats.products.active} · Tồn kho:{" "}
+              {stats.products.totalStock} đôi
             </Text>
           </Card>
         </Col>
@@ -216,10 +241,16 @@ const Dashboard = () => {
             </defs>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
-            <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(0)}tr`} />
+            <YAxis
+              tickFormatter={(v) =>
+                v >= 1000000 ? `${(v / 1000000).toFixed(1)}tr` : v
+              }
+            />
             <Tooltip
               formatter={(value, name) =>
-                name === "revenue" ? [formatCurrency(value), "Doanh thu"] : [value, "Số đơn"]
+                name === "revenue"
+                  ? [formatCurrency(value), "Doanh thu"]
+                  : [value, "Số đơn"]
               }
             />
             <Area
@@ -245,17 +276,31 @@ const Dashboard = () => {
           >
             <List
               dataSource={topProducts}
-              locale={{ emptyText: "Chưa có dữ liệu" }}
+              locale={{ emptyText: "Chưa có đơn hàng nào" }}
               renderItem={(item, index) => (
-                <List.Item>
+                <List.Item
+                  onClick={() => navigate(`/products/edit/${item.productId}`)}
+                  style={{ cursor: "pointer" }}
+                >
                   <List.Item.Meta
                     avatar={
-                      <Avatar style={{ backgroundColor: index === 0 ? "#faad14" : "#d9d9d9" }}>
-                        {index + 1}
-                      </Avatar>
+                      item.image ? (
+                        <Avatar src={toImageUrl(item.image)} shape="square" />
+                      ) : (
+                        <Avatar
+                          style={{
+                            backgroundColor:
+                              index === 0 ? "#faad14" : "#d9d9d9",
+                          }}
+                        >
+                          {index + 1}
+                        </Avatar>
+                      )
                     }
                     title={item.productName}
-                    description={`Đã bán: ${item.totalSold} · Doanh thu: ${formatCurrency(item.totalRevenue)}`}
+                    description={`Đã bán: ${item.totalSold} · Doanh thu: ${formatCurrency(
+                      item.totalRevenue
+                    )}`}
                   />
                 </List.Item>
               )}
@@ -270,6 +315,7 @@ const Dashboard = () => {
               rowKey="_id"
               pagination={false}
               size="small"
+              locale={{ emptyText: "Chưa có đơn hàng nào" }}
               onRow={(record) => ({
                 onClick: () => navigate(`/orders/${record._id}`),
                 style: { cursor: "pointer" },
