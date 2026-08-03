@@ -21,5 +21,6 @@ export const hideBrand = async (id) =>
 export const activeBrand = async (id) =>
   unwrap(await api.patch(`/admin/brands/${id}/active`));
 
-// Giữ tên cũ cho trang đang import deleteBrand — thực chất là ẩn.
-export const deleteBrand = hideBrand;
+// Đổi trạng thái theo giá trị mong muốn — dùng cho công tắc trên giao diện
+export const setBrandStatus = async (id, status) =>
+  status === "active" ? activeBrand(id) : hideBrand(id);

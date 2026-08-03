@@ -9,6 +9,16 @@ body {
   background: #f0f2f5;
 }
 
+/* Dòng đang bị ẩn (status = inactive) -> làm nhạt cho dễ phân biệt */
+.row-inactive td {
+  opacity: 0.45;
+}
+
+/* Trừ cột thao tác, vì công tắc bật lại phải luôn rõ ràng */
+.row-inactive td:last-child {
+  opacity: 1;
+}
+
 /* Chỉ in khu vực hóa đơn */
 @media print {
   body * {

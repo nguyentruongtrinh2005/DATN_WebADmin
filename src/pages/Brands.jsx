@@ -5,22 +5,21 @@ import {
   Modal,
   Form,
   Input,
-  Popconfirm,
   Card,
   Typography,
   Space,
-  Upload,
   Image,
+  Alert,
   message,
 } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, LinkOutlined } from "@ant-design/icons";
 import {
   getBrands,
   createBrand,
   updateBrand,
-  deleteBrand,
+  setBrandStatus,
 } from "../services/brand-service";
-import { uploadImage } from "../services/product-service";
+import StatusSwitch from "../components/StatusSwitch";
 import { getErrorMessage, toImageUrl } from "../lib/axios";
 
 const { Title } = Typography;
@@ -30,9 +29,10 @@ const Brands = () => {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [logo, setLogo] = useState("");
-  const [uploading, setUploading] = useState(false);
   const [form] = Form.useForm();
+
+  // Xem trước logo theo link đang gõ trong ô "Logo"
+  const logoUrl = Form.useWatch("logo", form);
 
   const fetchData = async () => {
     setLoading(true);
@@ -51,28 +51,16 @@ const Brands = () => {
 
   const openModal = (record = null) => {
     setEditing(record);
-    setLogo(record?.logo || "");
-    form.setFieldsValue(record || { name: "" });
+    form.setFieldsValue(record || { name: "", logo: "" });
     setModalOpen(true);
-  };
-
-  const handleUpload = async (file) => {
-    setUploading(true);
-    try {
-      const { url } = await uploadImage(file);
-      setLogo(url);
-      message.success("Upload logo thành công");
-    } catch (error) {
-      message.error(getErrorMessage(error));
-    } finally {
-      setUploading(false);
-    }
-    return false; // chặn antd tự upload
   };
 
   const handleSubmit = async (values) => {
     try {
-      const data = { ...values, logo };
+      const data = {
+        name: values.name,
+        logo: (values.logo || "").trim(),
+      };
 
       if (editing) {
         await updateBrand(editing._id, data);
@@ -83,17 +71,20 @@ const Brands = () => {
       }
       setModalOpen(false);
       form.resetFields();
-      setLogo("");
       fetchData();
     } catch (error) {
       message.error(getErrorMessage(error));
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleToggleStatus = async (id, nextStatus) => {
     try {
-      await deleteBrand(id);
-      message.success("Xóa thương hiệu thành công");
+      await setBrandStatus(id, nextStatus);
+      message.success(
+        nextStatus === "active"
+          ? "Đã hiện lại thương hiệu"
+          : "Đã ẩn thương hiệu"
+      );
       fetchData();
     } catch (error) {
       message.error(getErrorMessage(error));
@@ -119,21 +110,26 @@ const Brands = () => {
     },
     { title: "Tên thương hiệu", dataIndex: "name", key: "name" },
     {
+      title: "Trạng thái",
+      key: "status",
+      width: 190,
+      align: "center",
+      render: (_, record) => (
+        <StatusSwitch
+          status={record.status}
+          confirmOff="Mọi sản phẩm thuộc thương hiệu này cũng sẽ bị ẩn theo."
+          onChange={(next) => handleToggleStatus(record._id, next)}
+        />
+      ),
+    },
+    {
       title: "Thao tác",
       key: "action",
-      width: 150,
+      width: 90,
       align: "center",
       render: (_, record) => (
         <Space>
           <Button icon={<EditOutlined />} onClick={() => openModal(record)} />
-          <Popconfirm
-            title="Xóa thương hiệu này?"
-            okText="Xóa"
-            cancelText="Hủy"
-            onConfirm={() => handleDelete(record._id)}
-          >
-            <Button danger icon={<DeleteOutlined />} />
-          </Popconfirm>
         </Space>
       ),
     },
@@ -150,7 +146,22 @@ const Brands = () => {
         </Button>
       </div>
 
-      <Table columns={columns} dataSource={brands} rowKey="_id" loading={loading} />
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="Thương hiệu không xoá hẳn được — sản phẩm cũ vẫn tham chiếu tới nó. Dùng công tắc để ẩn / hiện."
+      />
+
+      <Table
+        columns={columns}
+        dataSource={brands}
+        rowKey="_id"
+        loading={loading}
+        rowClassName={(record) =>
+          record.status === "inactive" ? "row-inactive" : ""
+        }
+      />
 
       <Modal
         title={editing ? "Sửa thương hiệu" : "Thêm thương hiệu"}
@@ -170,18 +181,26 @@ const Brands = () => {
             <Input placeholder="Ví dụ: Nike" />
           </Form.Item>
 
-          <Form.Item label="Logo">
-            <Upload beforeUpload={handleUpload} showUploadList={false} accept="image/*">
-              <Button icon={<UploadOutlined />} loading={uploading}>
-                Chọn ảnh logo
-              </Button>
-            </Upload>
-            {logo && (
-              <div style={{ marginTop: 8 }}>
-                <Image src={toImageUrl(logo)} width={80} />
-              </div>
-            )}
+          <Form.Item
+            name="logo"
+            label="Logo (dán link ảnh)"
+            extra="Dán link ảnh trên mạng, ví dụ https://.../nike.png — bấm chuột phải vào ảnh > Sao chép địa chỉ hình ảnh."
+            rules={[{ type: "url", message: "Link ảnh không hợp lệ!" }]}
+          >
+            <Input prefix={<LinkOutlined />} placeholder="https://..." allowClear />
           </Form.Item>
+
+          {logoUrl && (
+            <div style={{ marginTop: -8, marginBottom: 8 }}>
+              <Image
+                src={toImageUrl(logoUrl)}
+                width={80}
+                height={80}
+                style={{ objectFit: "contain", border: "1px solid #f0f0f0", borderRadius: 6 }}
+                fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='%23fafafa'/%3E%3Ctext x='40' y='44' font-size='10' fill='%23999' text-anchor='middle'%3ELink lỗi%3C/text%3E%3C/svg%3E"
+              />
+            </div>
+          )}
         </Form>
       </Modal>
     </Card>

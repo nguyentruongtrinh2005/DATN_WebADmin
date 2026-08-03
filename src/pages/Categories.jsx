@@ -5,19 +5,20 @@ import {
   Modal,
   Form,
   Input,
-  Popconfirm,
   Card,
   Typography,
   Space,
+  Alert,
   message,
 } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined } from "@ant-design/icons";
 import {
   getCategories,
   createCategory,
   updateCategory,
-  deleteCategory,
+  setCategoryStatus,
 } from "../services/category-service";
+import StatusSwitch from "../components/StatusSwitch";
 import { getErrorMessage } from "../lib/axios";
 import { formatDate } from "../lib/common";
 
@@ -68,10 +69,12 @@ const Categories = () => {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleToggleStatus = async (id, nextStatus) => {
     try {
-      await deleteCategory(id);
-      message.success("Xóa danh mục thành công");
+      await setCategoryStatus(id, nextStatus);
+      message.success(
+        nextStatus === "active" ? "Đã hiện lại danh mục" : "Đã ẩn danh mục"
+      );
       fetchData();
     } catch (error) {
       message.error(getErrorMessage(error));
@@ -94,21 +97,26 @@ const Categories = () => {
       render: (d) => formatDate(d),
     },
     {
+      title: "Trạng thái",
+      key: "status",
+      width: 190,
+      align: "center",
+      render: (_, record) => (
+        <StatusSwitch
+          status={record.status}
+          confirmOff="Mọi sản phẩm thuộc danh mục này cũng sẽ bị ẩn theo."
+          onChange={(next) => handleToggleStatus(record._id, next)}
+        />
+      ),
+    },
+    {
       title: "Thao tác",
       key: "action",
-      width: 150,
+      width: 90,
       align: "center",
       render: (_, record) => (
         <Space>
           <Button icon={<EditOutlined />} onClick={() => openModal(record)} />
-          <Popconfirm
-            title="Xóa danh mục này?"
-            okText="Xóa"
-            cancelText="Hủy"
-            onConfirm={() => handleDelete(record._id)}
-          >
-            <Button danger icon={<DeleteOutlined />} />
-          </Popconfirm>
         </Space>
       ),
     },
@@ -125,7 +133,22 @@ const Categories = () => {
         </Button>
       </div>
 
-      <Table columns={columns} dataSource={categories} rowKey="_id" loading={loading} />
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="Danh mục không xoá hẳn được — sản phẩm cũ vẫn tham chiếu tới nó. Dùng công tắc để ẩn / hiện."
+      />
+
+      <Table
+        columns={columns}
+        dataSource={categories}
+        rowKey="_id"
+        loading={loading}
+        rowClassName={(record) =>
+          record.status === "inactive" ? "row-inactive" : ""
+        }
+      />
 
       <Modal
         title={editing ? "Sửa danh mục" : "Thêm danh mục"}
