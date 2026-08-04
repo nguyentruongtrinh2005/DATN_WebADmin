@@ -11,9 +11,12 @@ export const createVoucher = async (data) =>
 export const updateVoucher = async (id, data) =>
   unwrap(await api.put(`/admin/vouchers/${id}`, data));
 
-// API không xoá hẳn voucher (đơn cũ còn tham chiếu tới mã), chỉ ẩn.
-export const hideVoucher = async (id) =>
-  unwrap(await api.patch(`/admin/vouchers/${id}/hide`));
+// API không có /hide và /active riêng, chỉ có một endpoint tự đảo trạng thái
+// active <-> inactive, không cần gửi body.
+export const toggleVoucherStatus = async (id) =>
+  unwrap(await api.patch(`/admin/vouchers/${id}/status`));
 
-export const activeVoucher = async (id) =>
-  unwrap(await api.patch(`/admin/vouchers/${id}/active`));
+// Voucher xoá hẳn được (khác brand/category) vì đơn hàng chỉ lưu số tiền
+// giảm, không tham chiếu tới _id của voucher.
+export const deleteVoucher = async (id) =>
+  unwrap(await api.delete(`/admin/vouchers/${id}`));

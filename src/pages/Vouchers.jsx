@@ -13,6 +13,7 @@ import {
   Space,
   Tag,
   Tooltip,
+  Popconfirm,
   message,
 } from "antd";
 import {
@@ -20,17 +21,18 @@ import {
   EditOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import {
   getVouchers,
   createVoucher,
   updateVoucher,
-  hideVoucher,
-  activeVoucher,
+  toggleVoucherStatus,
+  deleteVoucher,
 } from "../services/voucher-service";
 import { getErrorMessage } from "../lib/axios";
-import { formatCurrency } from "../lib/common";
+import { formatCurrency, formatDate } from "../lib/common";
 
 const { Title } = Typography;
 
@@ -78,10 +80,11 @@ const Vouchers = () => {
       form.resetFields();
       form.setFieldsValue({
         discountType: "percent",
-        discountValue: 0,
+        discountValue: 10,
         minOrderValue: 0,
         maxDiscount: 0,
-        usageLimit: 0,
+        // API bắt buộc quantity >= 1
+        quantity: 100,
       });
     }
 
@@ -92,10 +95,11 @@ const Vouchers = () => {
     try {
       const { dateRange, ...rest } = values;
 
+      // API bắt buộc có startDate và endDate, không nhận null
       const data = {
         ...rest,
-        startDate: dateRange?.[0] ? dateRange[0].toISOString() : null,
-        endDate: dateRange?.[1] ? dateRange[1].toISOString() : null,
+        startDate: dateRange[0].toISOString(),
+        endDate: dateRange[1].toISOString(),
       };
 
       if (editing) {
@@ -116,13 +120,20 @@ const Vouchers = () => {
 
   const toggleStatus = async (record) => {
     try {
-      if (record.status === "active") {
-        await hideVoucher(record._id);
-        message.success("Đã ẩn voucher");
-      } else {
-        await activeVoucher(record._id);
-        message.success("Đã hiển thị voucher");
-      }
+      await toggleVoucherStatus(record._id);
+      message.success(
+        record.status === "active" ? "Đã ẩn voucher" : "Đã hiển thị voucher"
+      );
+      fetchData();
+    } catch (error) {
+      message.error(getErrorMessage(error));
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteVoucher(id);
+      message.success("Đã xóa voucher");
       fetchData();
     } catch (error) {
       message.error(getErrorMessage(error));
@@ -137,10 +148,17 @@ const Vouchers = () => {
       render: (code) => <strong style={{ letterSpacing: 1 }}>{code}</strong>,
     },
     {
-      title: "Mô tả",
-      dataIndex: "description",
-      key: "description",
-      ellipsis: true,
+      title: "Tên",
+      dataIndex: "name",
+      key: "name",
+      render: (name, r) => (
+        <div>
+          <div>{name}</div>
+          {r.description && (
+            <span style={{ fontSize: 12, color: "#999" }}>{r.description}</span>
+          )}
+        </div>
+      ),
     },
     {
       title: "Giảm",
@@ -170,25 +188,54 @@ const Vouchers = () => {
       title: "Lượt dùng",
       key: "usage",
       align: "center",
-      render: (_, r) =>
-        r.usageLimit > 0 ? `${r.usedCount}/${r.usageLimit}` : `${r.usedCount}/∞`,
+      render: (_, r) => {
+        const used = r.usedCount || 0;
+        const soldOut = r.quantity > 0 && used >= r.quantity;
+
+        return (
+          <span style={{ color: soldOut ? "#f5222d" : undefined }}>
+            {used}/{r.quantity}
+            {soldOut && " (hết)"}
+          </span>
+        );
+      },
+    },
+    {
+      title: "Hiệu lực",
+      key: "period",
+      width: 190,
+      render: (_, r) => (
+        <span style={{ fontSize: 12 }}>
+          {formatDate(r.startDate)}
+          <br />
+          {formatDate(r.endDate)}
+        </span>
+      ),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       align: "center",
-      render: (s) =>
-        s === "active" ? (
-          <Tag color="green">Đang áp dụng</Tag>
-        ) : (
-          <Tag color="red">Đã ẩn</Tag>
-        ),
+      render: (s, r) => {
+        if (s !== "active") return <Tag color="red">Đã ẩn</Tag>;
+
+        // Còn bật nhưng đã quá hạn -> API vẫn để active, phải tự nhận ra
+        if (r.endDate && dayjs(r.endDate).isBefore(dayjs())) {
+          return <Tag color="orange">Hết hạn</Tag>;
+        }
+
+        if (r.startDate && dayjs(r.startDate).isAfter(dayjs())) {
+          return <Tag color="blue">Chưa bắt đầu</Tag>;
+        }
+
+        return <Tag color="green">Đang áp dụng</Tag>;
+      },
     },
     {
       title: "Thao tác",
       key: "action",
-      width: 120,
+      width: 150,
       align: "center",
       render: (_, record) => (
         <Space>
@@ -205,6 +252,16 @@ const Vouchers = () => {
               onClick={() => toggleStatus(record)}
             />
           </Tooltip>
+          <Popconfirm
+            title="Xóa hẳn voucher này?"
+            description="Không khôi phục được. Muốn tạm ngưng thì dùng nút ẩn."
+            okText="Xóa"
+            cancelText="Hủy"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => handleDelete(record._id)}
+          >
+            <Button danger icon={<DeleteOutlined />} />
+          </Popconfirm>
         </Space>
       ),
     },
@@ -259,6 +316,14 @@ const Vouchers = () => {
             />
           </Form.Item>
 
+          <Form.Item
+            name="name"
+            label="Tên voucher"
+            rules={[{ required: true, message: "Vui lòng nhập tên voucher!" }]}
+          >
+            <Input placeholder="Ví dụ: Giảm 10% tháng 8" />
+          </Form.Item>
+
           <Form.Item name="description" label="Mô tả">
             <Input placeholder="Giảm 10% cho đơn từ 1 triệu..." />
           </Form.Item>
@@ -283,7 +348,7 @@ const Vouchers = () => {
               rules={[{ required: true, message: "Nhập giá trị giảm!" }]}
             >
               <InputNumber
-                min={0}
+                min={1}
                 max={discountType === "percent" ? 100 : undefined}
                 style={{ width: "100%" }}
                 formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
@@ -312,11 +377,19 @@ const Vouchers = () => {
             />
           </Form.Item>
 
-          <Form.Item name="usageLimit" label="Giới hạn lượt dùng — 0 là không giới hạn">
-            <InputNumber min={0} style={{ width: "100%" }} />
+          <Form.Item
+            name="quantity"
+            label="Số lượng voucher phát hành"
+            rules={[{ required: true, message: "Nhập số lượng!" }]}
+          >
+            <InputNumber min={1} style={{ width: "100%" }} />
           </Form.Item>
 
-          <Form.Item name="dateRange" label="Thời gian hiệu lực (để trống nếu không giới hạn)">
+          <Form.Item
+            name="dateRange"
+            label="Thời gian hiệu lực"
+            rules={[{ required: true, message: "Chọn thời gian hiệu lực!" }]}
+          >
             <DatePicker.RangePicker
               showTime
               style={{ width: "100%" }}
