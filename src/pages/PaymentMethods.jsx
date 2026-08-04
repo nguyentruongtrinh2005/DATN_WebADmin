@@ -165,12 +165,12 @@ const PaymentMethods = () => {
         Phương thức thanh toán
       </Title>
 
-      <Alert
+      {/* <Alert
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
         message="Hai phương thức này được khai báo cứng trong API (enum của Order). Muốn thêm hoặc tắt phương thức phải sửa backend, không bật/tắt từ đây được."
-      />
+      /> */}
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={8}>
