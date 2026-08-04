@@ -1,180 +1,218 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
-  Table,
   Card,
   Typography,
-  Button,
+  Table,
+  Tag,
+  Row,
+  Col,
+  Statistic,
+  Alert,
+  Progress,
   Space,
-  Modal,
-  Form,
-  Input,
-  Switch,
-  Popconfirm,
   message,
 } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, CreditCardOutlined } from "@ant-design/icons";
-import {
-  getPaymentMethods,
-  createPaymentMethod,
-  updatePaymentMethod,
-  deletePaymentMethod,
-} from "../services/system-service";
+import { DollarOutlined, CreditCardOutlined } from "@ant-design/icons";
+import { getOrders } from "../services/order-service";
 import { getErrorMessage } from "../lib/axios";
+import {
+  formatCurrency,
+  PAYMENT_STATUS_LABELS,
+  PAYMENT_STATUS_COLORS,
+} from "../lib/common";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+
+// API định nghĩa phương thức thanh toán bằng enum cứng trong models/Order.js
+// (paymentMethod: ["cod", "vnpay"]), không có collection riêng.
+// Nên trang này chỉ liệt kê và thống kê, không thêm/sửa/xoá được.
+const METHODS = [
+  {
+    key: "cod",
+    name: "COD — Thanh toán khi nhận hàng",
+    description:
+      "Khách trả tiền mặt cho shipper. Hệ thống tự đánh dấu đã thanh toán khi đơn chuyển sang Đã giao.",
+    color: "green",
+  },
+  {
+    key: "vnpay",
+    name: "VNPAY — Cổng thanh toán trực tuyến",
+    description:
+      "Khách thanh toán qua VNPAY. Đơn được đánh dấu đã thanh toán khi VNPAY báo kết quả thành công về API.",
+    color: "blue",
+  },
+];
 
 const PaymentMethods = () => {
-  const [methods, setMethods] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [form] = Form.useForm();
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      setMethods(await getPaymentMethods());
-    } catch (error) {
-      message.error(getErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        setOrders(await getOrders());
+      } catch (error) {
+        message.error(getErrorMessage(error));
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
   }, []);
 
-  const openModal = (record = null) => {
-    setEditing(record);
-    form.setFieldsValue(record || { name: "", code: "", description: "", isActive: true });
-    setModalOpen(true);
-  };
+  const rows = useMemo(() => {
+    const valid = orders.filter((o) => o.status !== "cancelled");
 
-  const handleSubmit = async (values) => {
-    try {
-      if (editing) {
-        await updatePaymentMethod(editing._id, values);
-        message.success("Cập nhật thành công");
-      } else {
-        await createPaymentMethod(values);
-        message.success("Thêm thành công");
-      }
-      setModalOpen(false);
-      fetchData();
-    } catch (error) {
-      message.error(getErrorMessage(error));
-    }
-  };
+    return METHODS.map((method) => {
+      const ofMethod = valid.filter((o) => o.paymentMethod === method.key);
+
+      const paid = ofMethod.filter((o) => o.paymentStatus === "paid");
+
+      return {
+        ...method,
+        orderCount: ofMethod.length,
+        paidCount: paid.length,
+        revenue: paid.reduce((sum, o) => sum + (o.total || 0), 0),
+        pendingRevenue: ofMethod
+          .filter((o) => o.paymentStatus !== "paid")
+          .reduce((sum, o) => sum + (o.total || 0), 0),
+      };
+    });
+  }, [orders]);
+
+  const totalOrders = rows.reduce((sum, r) => sum + r.orderCount, 0);
+  const totalRevenue = rows.reduce((sum, r) => sum + r.revenue, 0);
 
   const columns = [
-    { title: "Tên phương thức", dataIndex: "name", key: "name" },
     {
-      title: "Mã",
-      dataIndex: "code",
-      key: "code",
-      width: 110,
-      render: (c) => <code>{c}</code>,
+      title: "Phương thức",
+      key: "name",
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <Space>
+            <Tag color={record.color}>{record.key.toUpperCase()}</Tag>
+            <Text strong>{record.name}</Text>
+          </Space>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {record.description}
+          </Text>
+        </Space>
+      ),
     },
-    { title: "Mô tả", dataIndex: "description", key: "description", ellipsis: true },
     {
-      title: "Kích hoạt",
-      dataIndex: "isActive",
-      key: "isActive",
-      width: 110,
+      title: "Số đơn",
+      dataIndex: "orderCount",
+      key: "orderCount",
+      width: 100,
       align: "center",
-      render: (isActive, record) => (
-        <Switch
-          checked={isActive}
-          onChange={async (checked) => {
-            try {
-              await updatePaymentMethod(record._id, { isActive: checked });
-              fetchData();
-            } catch (error) {
-              message.error(getErrorMessage(error));
-            }
-          }}
+    },
+    {
+      title: "Tỉ lệ sử dụng",
+      key: "share",
+      width: 170,
+      render: (_, record) => (
+        <Progress
+          percent={
+            totalOrders === 0
+              ? 0
+              : Math.round((record.orderCount / totalOrders) * 100)
+          }
+          size="small"
         />
       ),
     },
     {
-      title: "Thao tác",
-      key: "action",
-      width: 130,
+      title: "Đã thanh toán",
+      key: "paid",
+      width: 140,
       align: "center",
       render: (_, record) => (
-        <Space>
-          <Button icon={<EditOutlined />} onClick={() => openModal(record)} />
-          <Popconfirm
-            title="Xóa phương thức này?"
-            okText="Xóa"
-            cancelText="Hủy"
-            onConfirm={async () => {
-              try {
-                await deletePaymentMethod(record._id);
-                message.success("Đã xóa");
-                fetchData();
-              } catch (error) {
-                message.error(getErrorMessage(error));
-              }
-            }}
-          >
-            <Button danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
+        <Tag color={PAYMENT_STATUS_COLORS.paid}>
+          {record.paidCount} / {record.orderCount}
+        </Tag>
       ),
+    },
+    {
+      title: "Doanh thu đã thu",
+      dataIndex: "revenue",
+      key: "revenue",
+      width: 170,
+      render: (v) => <strong>{formatCurrency(v)}</strong>,
+    },
+    {
+      title: "Chưa thu",
+      dataIndex: "pendingRevenue",
+      key: "pendingRevenue",
+      width: 150,
+      render: (v) => (
+        <Text type={v > 0 ? "warning" : "secondary"}>{formatCurrency(v)}</Text>
+      ),
+    },
+    {
+      title: "Trạng thái",
+      key: "status",
+      width: 110,
+      align: "center",
+      render: () => <Tag color="green">Đang bật</Tag>,
     },
   ];
 
   return (
     <Card>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-        <Title level={3} style={{ margin: 0 }}>
-          <CreditCardOutlined style={{ marginRight: 8 }} />
-          Phương thức thanh toán
-        </Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
-          Thêm phương thức
-        </Button>
-      </div>
+      <Title level={3} style={{ marginTop: 0 }}>
+        Phương thức thanh toán
+      </Title>
 
-      <Table columns={columns} dataSource={methods} rowKey="_id" loading={loading} />
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="Hai phương thức này được khai báo cứng trong API (enum của Order). Muốn thêm hoặc tắt phương thức phải sửa backend, không bật/tắt từ đây được."
+      />
 
-      <Modal
-        title={editing ? "Sửa phương thức thanh toán" : "Thêm phương thức thanh toán"}
-        open={modalOpen}
-        onCancel={() => setModalOpen(false)}
-        onOk={() => form.submit()}
-        okText={editing ? "Cập nhật" : "Thêm mới"}
-        cancelText="Hủy"
-        destroyOnClose
-      >
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Form.Item
-            name="name"
-            label="Tên phương thức"
-            rules={[{ required: true, message: "Nhập tên!" }]}
-          >
-            <Input placeholder="Ví dụ: Thanh toán khi nhận hàng" />
-          </Form.Item>
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={8}>
+          <Card size="small">
+            <Statistic
+              title="Tổng đơn (không tính đơn hủy)"
+              value={totalOrders}
+              prefix={<CreditCardOutlined style={{ color: "#1890ff" }} />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card size="small">
+            <Statistic
+              title="Doanh thu đã thu được"
+              value={totalRevenue}
+              formatter={(v) => formatCurrency(v)}
+              prefix={<DollarOutlined style={{ color: "#52c41a" }} />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card size="small">
+            <Statistic
+              title="Số phương thức đang bật"
+              value={METHODS.length}
+            />
+          </Card>
+        </Col>
+      </Row>
 
-          <Form.Item
-            name="code"
-            label="Mã (viết thường, không dấu)"
-            rules={[{ required: true, message: "Nhập mã!" }]}
-          >
-            <Input placeholder="cod, bank, momo..." disabled={Boolean(editing)} />
-          </Form.Item>
+      <Table
+        columns={columns}
+        dataSource={rows}
+        rowKey="key"
+        loading={loading}
+        pagination={false}
+      />
 
-          <Form.Item name="description" label="Mô tả">
-            <Input.TextArea rows={2} />
-          </Form.Item>
-
-          <Form.Item name="isActive" label="Kích hoạt" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 12 }}>
+        Ghi chú: "Chưa thu" là tiền của các đơn đã đặt nhưng {PAYMENT_STATUS_LABELS.pending.toLowerCase()} — với COD là đơn chưa giao xong, với VNPAY là đơn khách bỏ dở giữa chừng.
+      </Text>
     </Card>
   );
 };

@@ -1,63 +1,38 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Table,
   Card,
   Typography,
   Tag,
-  Button,
   Space,
   Select,
   Rate,
-  Modal,
   Input,
-  Popconfirm,
-  Tooltip,
-  Badge,
+  Image,
+  Avatar,
+  Row,
+  Col,
+  Statistic,
+  Alert,
   message,
 } from "antd";
-import {
-  CheckOutlined,
-  CloseOutlined,
-  MessageOutlined,
-  RobotOutlined,
-  DeleteOutlined,
-  WarningOutlined,
-} from "@ant-design/icons";
-import {
-  getReviews,
-  replyReview,
-  moderateReview,
-  recheckReview,
-  deleteReview,
-} from "../services/review-service";
-import { getErrorMessage } from "../lib/axios";
+import { SearchOutlined, UserOutlined, StarOutlined } from "@ant-design/icons";
+import { getReviews } from "../services/review-service";
+import { getErrorMessage, toImageUrl } from "../lib/axios";
 import { formatDate } from "../lib/common";
-import { useAuthStore } from "../store/useAuthStore";
 
 const { Title, Text, Paragraph } = Typography;
 
-const STATUS_LABELS = {
-  pending: { label: "Chờ duyệt", color: "orange" },
-  approved: { label: "Đã duyệt", color: "green" },
-  rejected: { label: "Từ chối", color: "red" },
-};
-
 const Reviews = () => {
-  const { user } = useAuthStore();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [flaggedOnly, setFlaggedOnly] = useState(false);
-  const [replying, setReplying] = useState(null);
-  const [replyContent, setReplyContent] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [ratingFilter, setRatingFilter] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (statusFilter) params.status = statusFilter;
-      if (flaggedOnly) params.flagged = "true";
-      setReviews(await getReviews(params));
+      setReviews(await getReviews());
     } catch (error) {
       message.error(getErrorMessage(error));
     } finally {
@@ -67,219 +42,201 @@ const Reviews = () => {
 
   useEffect(() => {
     fetchData();
-  }, [statusFilter, flaggedOnly]);
+  }, []);
 
-  const doAction = async (fn, successMsg) => {
-    try {
-      await fn();
-      message.success(successMsg);
-      fetchData();
-    } catch (error) {
-      message.error(getErrorMessage(error));
+  const stats = useMemo(() => {
+    if (reviews.length === 0) {
+      return { total: 0, average: 0, lowRating: 0 };
     }
-  };
 
-  const handleReply = () =>
-    doAction(async () => {
-      await replyReview(replying._id, replyContent);
-      setReplying(null);
-      setReplyContent("");
-    }, "Trả lời thành công");
+    const sum = reviews.reduce((total, r) => total + (r.rating || 0), 0);
+
+    return {
+      total: reviews.length,
+      average: Number((sum / reviews.length).toFixed(1)),
+      lowRating: reviews.filter((r) => r.rating <= 2).length,
+    };
+  }, [reviews]);
+
+  const filtered = reviews.filter((review) => {
+    if (ratingFilter && review.rating !== ratingFilter) return false;
+
+    if (searchText) {
+      const keyword = searchText.toLowerCase();
+      const haystack = [
+        review.comment,
+        review.user?.fullName,
+        review.product?.name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      if (!haystack.includes(keyword)) return false;
+    }
+
+    return true;
+  });
 
   const columns = [
     {
       title: "Sản phẩm",
-      dataIndex: ["product", "name"],
       key: "product",
-      width: 160,
+      width: 260,
+      render: (_, record) => (
+        <Space>
+          {record.product?.image && (
+            <Image
+              src={toImageUrl(record.product.image)}
+              width={44}
+              height={44}
+              style={{ objectFit: "cover", borderRadius: 4 }}
+            />
+          )}
+          <Text>{record.product?.name || "—"}</Text>
+        </Space>
+      ),
     },
     {
       title: "Khách hàng",
-      dataIndex: ["user", "fullName"],
       key: "user",
-      width: 140,
+      width: 190,
+      render: (_, record) => (
+        <Space>
+          <Avatar
+            size="small"
+            icon={<UserOutlined />}
+            src={record.user?.avatar || undefined}
+          />
+          <Text>{record.user?.fullName || "—"}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: "Đánh giá",
+      dataIndex: "rating",
+      key: "rating",
+      width: 150,
+      render: (rating) => (
+        <Space direction="vertical" size={0}>
+          <Rate disabled value={rating} style={{ fontSize: 14 }} />
+          {rating <= 2 && <Tag color="red">Cần chú ý</Tag>}
+        </Space>
+      ),
+      sorter: (a, b) => a.rating - b.rating,
     },
     {
       title: "Nội dung",
-      key: "content",
-      render: (_, record) => (
+      dataIndex: "comment",
+      key: "comment",
+      render: (comment, record) => (
         <div>
-          {record.rating && <Rate disabled value={record.rating} style={{ fontSize: 13 }} />}
-          <Paragraph style={{ margin: "4px 0" }}>{record.content}</Paragraph>
+          <Paragraph
+            style={{ marginBottom: record.images?.length ? 8 : 0 }}
+            ellipsis={{ rows: 3, expandable: true, symbol: "Xem thêm" }}
+          >
+            {comment || <Text type="secondary">(không có nội dung)</Text>}
+          </Paragraph>
 
-          {record.aiModeration?.flagged && (
-            <Tooltip title={record.aiModeration.reason}>
-              <Tag icon={<WarningOutlined />} color="error">
-                AI cảnh báo
-              </Tag>
-            </Tooltip>
-          )}
-
-          {record.reply?.content && (
-            <div
-              style={{
-                background: "#f6ffed",
-                border: "1px solid #b7eb8f",
-                borderRadius: 6,
-                padding: "6px 10px",
-                marginTop: 4,
-              }}
-            >
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Shop trả lời ({record.reply.repliedBy?.fullName}):
-              </Text>
-              <div>{record.reply.content}</div>
-            </div>
+          {record.images?.length > 0 && (
+            <Space>
+              {record.images.map((img, i) => (
+                <Image
+                  key={i}
+                  src={toImageUrl(img)}
+                  width={48}
+                  height={48}
+                  style={{ objectFit: "cover", borderRadius: 4 }}
+                />
+              ))}
+            </Space>
           )}
         </div>
       ),
     },
     {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      width: 110,
-      render: (s) => <Tag color={STATUS_LABELS[s]?.color}>{STATUS_LABELS[s]?.label}</Tag>,
-    },
-    {
-      title: "Ngày gửi",
+      title: "Ngày đánh giá",
       dataIndex: "createdAt",
       key: "createdAt",
-      width: 130,
+      width: 150,
       render: (d) => formatDate(d),
-    },
-    {
-      title: "Thao tác",
-      key: "action",
-      width: 200,
-      render: (_, record) => (
-        <Space wrap>
-          {record.status !== "approved" && (
-            <Tooltip title="Duyệt">
-              <Button
-                size="small"
-                type="primary"
-                ghost
-                icon={<CheckOutlined />}
-                onClick={() =>
-                  doAction(() => moderateReview(record._id, "approved"), "Đã duyệt")
-                }
-              />
-            </Tooltip>
-          )}
-          {record.status !== "rejected" && (
-            <Tooltip title="Từ chối">
-              <Button
-                size="small"
-                danger
-                icon={<CloseOutlined />}
-                onClick={() =>
-                  doAction(() => moderateReview(record._id, "rejected"), "Đã từ chối")
-                }
-              />
-            </Tooltip>
-          )}
-          <Tooltip title="Trả lời">
-            <Button
-              size="small"
-              icon={<MessageOutlined />}
-              onClick={() => {
-                setReplying(record);
-                setReplyContent(record.reply?.content || "");
-              }}
-            />
-          </Tooltip>
-          <Tooltip title="Kiểm tra lại bằng AI">
-            <Button
-              size="small"
-              icon={<RobotOutlined />}
-              onClick={() =>
-                doAction(() => recheckReview(record._id), "Đã kiểm tra lại bằng AI")
-              }
-            />
-          </Tooltip>
-          {user?.role === "admin" && (
-            <Popconfirm
-              title="Xóa đánh giá này?"
-              okText="Xóa"
-              cancelText="Hủy"
-              onConfirm={() => doAction(() => deleteReview(record._id), "Đã xóa")}
-            >
-              <Button size="small" danger icon={<DeleteOutlined />} />
-            </Popconfirm>
-          )}
-        </Space>
-      ),
+      sorter: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+      defaultSortOrder: "descend",
     },
   ];
 
-  const flaggedCount = reviews.filter((r) => r.aiModeration?.flagged).length;
-
   return (
     <Card>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-        <Space>
-          <Title level={3} style={{ margin: 0 }}>
-            Đánh giá & Bình luận
-          </Title>
-          {flaggedCount > 0 && (
-            <Badge count={`${flaggedCount} AI cảnh báo`} style={{ backgroundColor: "#ff4d4f" }} />
-          )}
-        </Space>
-        <Space>
-          <Select
-            placeholder="Lọc trạng thái"
-            style={{ width: 140 }}
+      <Title level={3} style={{ marginTop: 0 }}>
+        Đánh giá & Bình luận
+      </Title>
+
+      {/* <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="Trang này chỉ xem. Trả lời, duyệt và xoá đánh giá cần bổ sung API (model Review hiện chưa có trường trạng thái và phản hồi)."
+      /> */}
+
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={8}>
+          <Card size="small">
+            <Statistic title="Tổng đánh giá" value={stats.total} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card size="small">
+            <Statistic
+              title="Điểm trung bình"
+              value={stats.average}
+              suffix="/ 5"
+              prefix={<StarOutlined style={{ color: "#faad14" }} />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card size="small">
+            <Statistic
+              title="Đánh giá thấp (≤ 2★)"
+              value={stats.lowRating}
+              valueStyle={{ color: stats.lowRating > 0 ? "#f5222d" : undefined }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={14}>
+          <Input
+            placeholder="Tìm theo nội dung, tên khách, tên sản phẩm..."
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
             allowClear
-            value={statusFilter || undefined}
-            onChange={(v) => setStatusFilter(v || "")}
-            options={Object.entries(STATUS_LABELS).map(([value, { label }]) => ({
-              value,
-              label,
+          />
+        </Col>
+        <Col xs={24} md={6}>
+          <Select
+            placeholder="Lọc theo số sao"
+            style={{ width: "100%" }}
+            allowClear
+            value={ratingFilter}
+            onChange={(v) => setRatingFilter(v ?? null)}
+            options={[5, 4, 3, 2, 1].map((star) => ({
+              value: star,
+              label: `${star} sao`,
             }))}
           />
-          <Button
-            type={flaggedOnly ? "primary" : "default"}
-            danger={flaggedOnly}
-            icon={<WarningOutlined />}
-            onClick={() => setFlaggedOnly(!flaggedOnly)}
-          >
-            Chỉ AI cảnh báo
-          </Button>
-        </Space>
-      </div>
+        </Col>
+      </Row>
 
-      <Table columns={columns} dataSource={reviews} rowKey="_id" loading={loading} />
-
-      <Modal
-        title="Trả lời đánh giá"
-        open={Boolean(replying)}
-        onCancel={() => setReplying(null)}
-        onOk={handleReply}
-        okText="Gửi trả lời"
-        cancelText="Hủy"
-      >
-        {replying && (
-          <div
-            style={{
-              background: "#fafafa",
-              padding: 10,
-              borderRadius: 6,
-              marginBottom: 12,
-            }}
-          >
-            <Text type="secondary">
-              {replying.user?.fullName}: {replying.content}
-            </Text>
-          </div>
-        )}
-        <Input.TextArea
-          rows={4}
-          value={replyContent}
-          onChange={(e) => setReplyContent(e.target.value)}
-          placeholder="Nội dung trả lời khách hàng..."
-        />
-      </Modal>
+      <Table
+        columns={columns}
+        dataSource={filtered}
+        rowKey="_id"
+        loading={loading}
+        locale={{ emptyText: "Chưa có đánh giá nào" }}
+      />
     </Card>
   );
 };
