@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ComingSoon from "../components/ComingSoon";
 import {
   Table,
   Card,
@@ -27,6 +28,22 @@ import { formatDate } from "../lib/common";
 const { Title } = Typography;
 
 const Notifications = () => {
+  // Thông báo tự động khi đổi trạng thái đơn thì API đã làm rồi, nhưng model
+  // Notification bắt buộc phải gắn với 1 user + 1 order cụ thể và type chỉ có
+  // "order_status" -> không gửi được thông báo chung cho toàn bộ khách hàng.
+  // Xoá đoạn return này khi backend làm xong, code bên dưới vẫn còn nguyên.
+  return (
+    <ComingSoon
+      title="Thông báo hệ thống"
+      reason="API đã tự gửi thông báo khi đơn hàng đổi trạng thái, nhưng chưa gửi được thông báo chung (khuyến mãi, bảo trì...) và admin cũng chưa xem được danh sách thông báo đã gửi."
+      todo={[
+        "Backend: bỏ ràng buộc bắt buộc trường order trong model Notification",
+        'Backend: mở rộng type ngoài "order_status" (ví dụ promotion, system)',
+        "Backend: route /admin/notifications để xem và gửi thông báo hàng loạt",
+      ]}
+    />
+  );
+  // eslint-disable-next-line no-unreachable
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);

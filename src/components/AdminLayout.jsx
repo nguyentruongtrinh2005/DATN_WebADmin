@@ -14,10 +14,22 @@ const AdminLayout = () => {
   const location = useLocation();
   const { user } = useAuthStore();
 
-  // Chỉ hiện menu đúng vai trò
+  // Chỉ hiện menu đúng vai trò.
+  // Mục đang phát triển vẫn hiện, chỉ làm mờ và ghi chú để khỏi bấm nhầm.
   const visibleItems = menuItems
-    .filter((item) => item.roles.includes(user?.role))
-    .map(({ key, icon, label }) => ({ key, icon, label }));
+    .filter((item) => !item.hidden && item.roles.includes(user?.role))
+    .map(({ key, icon, label, wip }) => ({
+      key,
+      icon,
+      label: wip ? (
+        <span style={{ opacity: 0.65 }}>
+          {label}
+          <span style={{ fontSize: 11, marginLeft: 6 }}>(đang phát triển)</span>
+        </span>
+      ) : (
+        label
+      ),
+    }));
 
   const selectedKey =
     menuItems.find((item) => location.pathname.startsWith(item.key))?.key ||

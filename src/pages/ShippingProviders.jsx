@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ComingSoon from "../components/ComingSoon";
 import {
   Table,
   Card,
@@ -26,6 +27,22 @@ import { formatCurrency } from "../lib/common";
 const { Title } = Typography;
 
 const ShippingProviders = () => {
+  // API không có khái niệm đơn vị vận chuyển: model Order chỉ có shippingFee,
+  // không lưu hãng vận chuyển hay mã vận đơn. App cũng đang để shippingFee = 0.
+  // Xoá đoạn return này khi backend làm xong, code bên dưới vẫn còn nguyên.
+  return (
+    <ComingSoon
+      title="Đơn vị vận chuyển"
+      reason="API chưa có dữ liệu vận chuyển. Đơn hàng chỉ lưu mỗi phí ship (shippingFee), không có hãng vận chuyển hay mã vận đơn, và app đang để phí ship bằng 0."
+      todo={[
+        "Backend: thêm model ShippingProvider (tên, phí, thời gian giao dự kiến)",
+        "Backend: thêm trường shippingProvider và mã vận đơn vào Order",
+        "Backend: route /admin/shipping-providers",
+        "App: cho khách chọn đơn vị vận chuyển ở màn hình thanh toán",
+      ]}
+    />
+  );
+  // eslint-disable-next-line no-unreachable
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);

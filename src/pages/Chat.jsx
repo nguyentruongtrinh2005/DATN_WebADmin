@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import ComingSoon from "../components/ComingSoon";
 import {
   Card,
   Row,
@@ -27,6 +28,21 @@ const { Title, Text } = Typography;
 const POLL_INTERVAL = 5000;
 
 const Chat = () => {
+  // API chưa có model Conversation/Message và cũng chưa có route /admin/chat.
+  // Xoá đoạn return này khi backend làm xong, code bên dưới vẫn còn nguyên.
+  return (
+    <ComingSoon
+      title="Chat khách hàng"
+      reason="API chưa có chức năng chat: không có model hội thoại, không có route /admin/chat, và app khách hàng cũng chưa có màn hình nhắn tin."
+      todo={[
+        "Backend: thêm model Conversation + Message",
+        "Backend: route /admin/chat/conversations và .../messages",
+        "Backend: Socket.IO hoặc polling để tin nhắn hiện theo thời gian thực",
+        "App: màn hình chat cho khách hàng",
+      ]}
+    />
+  );
+  // eslint-disable-next-line no-unreachable
   const { user } = useAuthStore();
   const [conversations, setConversations] = useState([]);
   const [selected, setSelected] = useState(null);

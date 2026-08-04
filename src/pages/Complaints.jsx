@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ComingSoon from "../components/ComingSoon";
 import {
   Table,
   Card,
@@ -29,6 +30,20 @@ const STATUS_LABELS = {
 };
 
 const Complaints = () => {
+  // API chưa có model khiếu nại và route /admin/complaints.
+  // Xoá đoạn return này khi backend làm xong, code bên dưới vẫn còn nguyên.
+  return (
+    <ComingSoon
+      title="Khiếu nại"
+      reason="API chưa có model khiếu nại và route /admin/complaints. Khách hàng cũng chưa có chỗ nào trong app để gửi khiếu nại."
+      todo={[
+        "Backend: thêm model Complaint (đơn hàng, lý do, trạng thái xử lý)",
+        "Backend: route /admin/complaints để xem và xử lý",
+        "App: màn hình gửi khiếu nại từ chi tiết đơn hàng",
+      ]}
+    />
+  );
+  // eslint-disable-next-line no-unreachable
   const navigate = useNavigate();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
