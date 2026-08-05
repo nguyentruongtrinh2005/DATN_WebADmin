@@ -1,12 +1,12 @@
 import api, { unwrap } from "../lib/axios";
 
-export const getUsers = async (params = {}) =>
-  unwrap(await api.get("/admin/users", { params }));
+// API mới chỉ có 2 route đọc, đều yêu cầu token + quyền admin:
+//   GET /admin/users       -> danh sách (đã bỏ trường password)
+//   GET /admin/users/:id   -> chi tiết
+export const getUsers = async () => unwrap(await api.get("/admin/users"));
 
-export const toggleUserActive = async (id) =>
-  unwrap(await api.patch(`/admin/users/${id}/toggle-active`));
+export const getUserById = async (id) =>
+  unwrap(await api.get(`/admin/users/${id}`));
 
-export const updateUserRole = async (id, role) =>
-  unwrap(await api.patch(`/admin/users/${id}/role`, { role }));
-
-export const deleteUser = async (id) => unwrap(await api.delete(`/admin/users/${id}`));
+// Khoá tài khoản, đổi vai trò và xoá người dùng: API chưa có endpoint tương ứng.
+// Khi backend bổ sung thì khai báo lại ở đây và mở nút trong Users.jsx.
