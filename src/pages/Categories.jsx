@@ -11,7 +11,7 @@ import {
   Alert,
   message,
 } from "antd";
-import { PlusOutlined, EditOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, SearchOutlined } from "@ant-design/icons";
 import {
   getCategories,
   createCategory,
@@ -29,6 +29,7 @@ const Categories = () => {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [searchText, setSearchText] = useState("");
   const [form] = Form.useForm();
 
   const fetchData = async () => {
@@ -80,6 +81,11 @@ const Categories = () => {
       message.error(getErrorMessage(error));
     }
   };
+
+  // API trả về toàn bộ danh sách, không nhận tham số lọc -> lọc tại đây
+  const filtered = categories.filter((c) =>
+    (c.name || "").toLowerCase().includes(searchText.trim().toLowerCase())
+  );
 
   const columns = [
     {
@@ -134,11 +140,25 @@ const Categories = () => {
       </div>
 
 
+      <Input
+        placeholder="Tìm theo tên danh mục..."
+        prefix={<SearchOutlined />}
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        allowClear
+        style={{ marginBottom: 16 }}
+      />
+
       <Table
         columns={columns}
-        dataSource={categories}
+        dataSource={filtered}
         rowKey="_id"
         loading={loading}
+        locale={{
+          emptyText: searchText
+            ? "Không tìm thấy danh mục nào"
+            : "Chưa có danh mục nào",
+        }}
         rowClassName={(record) =>
           record.status === "inactive" ? "row-inactive" : ""
         }

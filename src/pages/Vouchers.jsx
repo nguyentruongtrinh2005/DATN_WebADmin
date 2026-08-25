@@ -22,6 +22,7 @@ import {
   EyeInvisibleOutlined,
   EyeOutlined,
   DeleteOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import {
@@ -41,6 +42,7 @@ const Vouchers = () => {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [searchText, setSearchText] = useState("");
   const [form] = Form.useForm();
 
   // Theo dõi kiểu giảm để đổi nhãn ô nhập (% hay đ) và ẩn/hiện "giảm tối đa"
@@ -139,6 +141,19 @@ const Vouchers = () => {
       message.error(getErrorMessage(error));
     }
   };
+
+  // API trả về toàn bộ danh sách, không nhận tham số lọc -> lọc tại đây
+  const filtered = vouchers.filter((v) => {
+    if (!searchText.trim()) return true;
+
+    const keyword = searchText.trim().toLowerCase();
+    const haystack = [v.code, v.name, v.description]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return haystack.includes(keyword);
+  });
 
   const columns = [
     {
@@ -288,11 +303,25 @@ const Vouchers = () => {
         </Button>
       </div>
 
+      <Input
+        placeholder="Tìm theo mã, tên hoặc mô tả voucher..."
+        prefix={<SearchOutlined />}
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        allowClear
+        style={{ marginBottom: 16 }}
+      />
+
       <Table
         columns={columns}
-        dataSource={vouchers}
+        dataSource={filtered}
         rowKey="_id"
         loading={loading}
+        locale={{
+          emptyText: searchText
+            ? "Không tìm thấy voucher nào"
+            : "Chưa có voucher nào",
+        }}
       />
 
       <Modal

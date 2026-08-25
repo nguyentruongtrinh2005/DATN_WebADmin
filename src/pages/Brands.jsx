@@ -12,7 +12,12 @@ import {
   Alert,
   message,
 } from "antd";
-import { PlusOutlined, EditOutlined, LinkOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  EditOutlined,
+  LinkOutlined,
+  SearchOutlined,
+} from "@ant-design/icons";
 import {
   getBrands,
   createBrand,
@@ -29,6 +34,7 @@ const Brands = () => {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [searchText, setSearchText] = useState("");
   const [form] = Form.useForm();
 
   // Xem trước logo theo link đang gõ trong ô "Logo"
@@ -91,6 +97,11 @@ const Brands = () => {
     }
   };
 
+  // API trả về toàn bộ danh sách, không nhận tham số lọc -> lọc tại đây
+  const filtered = brands.filter((b) =>
+    (b.name || "").toLowerCase().includes(searchText.trim().toLowerCase())
+  );
+
   const columns = [
     {
       title: "STT",
@@ -147,11 +158,25 @@ const Brands = () => {
       </div>
 
 
+      <Input
+        placeholder="Tìm theo tên thương hiệu..."
+        prefix={<SearchOutlined />}
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        allowClear
+        style={{ marginBottom: 16 }}
+      />
+
       <Table
         columns={columns}
-        dataSource={brands}
+        dataSource={filtered}
         rowKey="_id"
         loading={loading}
+        locale={{
+          emptyText: searchText
+            ? "Không tìm thấy thương hiệu nào"
+            : "Chưa có thương hiệu nào",
+        }}
         rowClassName={(record) =>
           record.status === "inactive" ? "row-inactive" : ""
         }
