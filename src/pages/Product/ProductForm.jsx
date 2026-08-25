@@ -504,7 +504,7 @@ const ProductForm = () => {
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
-            message="Bấm “Thêm màu” để tạo màu của sản phẩm, chọn màu rồi tích nhiều size cùng lúc — mỗi size sẽ thành một biến thể riêng."
+            message="Bấm để tạo màu của sản phẩm, chọn màu rồi tích nhiều size cùng lúc — mỗi size sẽ thành một biến thể riêng."
           /> */}
 
           <div style={{ marginBottom: 16 }}>
