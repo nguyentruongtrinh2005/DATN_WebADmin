@@ -15,11 +15,7 @@ import {
 import { DollarOutlined, CreditCardOutlined } from "@ant-design/icons";
 import { getOrders } from "../services/order-service";
 import { getErrorMessage } from "../lib/axios";
-import {
-  formatCurrency,
-  PAYMENT_STATUS_LABELS,
-  PAYMENT_STATUS_COLORS,
-} from "../lib/common";
+import { formatCurrency, PAYMENT_STATUS_COLORS } from "../lib/common";
 
 const { Title, Text } = Typography;
 
@@ -62,21 +58,23 @@ const PaymentMethods = () => {
     fetchData();
   }, []);
 
+  // Doanh thu tính giống trang Thống kê: chỉ đơn đã giao mới được ghi nhận.
+  // "Đã giao" là trạng thái cuối của đơn, tương đương hoàn thành.
   const rows = useMemo(() => {
     const valid = orders.filter((o) => o.status !== "cancelled");
 
     return METHODS.map((method) => {
       const ofMethod = valid.filter((o) => o.paymentMethod === method.key);
 
-      const paid = ofMethod.filter((o) => o.paymentStatus === "paid");
+      const delivered = ofMethod.filter((o) => o.status === "delivered");
 
       return {
         ...method,
         orderCount: ofMethod.length,
-        paidCount: paid.length,
-        revenue: paid.reduce((sum, o) => sum + (o.total || 0), 0),
+        deliveredCount: delivered.length,
+        revenue: delivered.reduce((sum, o) => sum + (o.total || 0), 0),
         pendingRevenue: ofMethod
-          .filter((o) => o.paymentStatus !== "paid")
+          .filter((o) => o.status !== "delivered")
           .reduce((sum, o) => sum + (o.total || 0), 0),
       };
     });
@@ -108,41 +106,41 @@ const PaymentMethods = () => {
       width: 100,
       align: "center",
     },
+    // {
+    //   title: "Tỉ lệ sử dụng",
+    //   key: "share",
+    //   width: 170,
+    //   render: (_, record) => (
+    //     <Progress
+    //       percent={
+    //         totalOrders === 0
+    //           ? 0
+    //           : Math.round((record.orderCount / totalOrders) * 100)
+    //       }
+    //       size="small"
+    //     />
+    //   ),
+    // },
     {
-      title: "Tỉ lệ sử dụng",
-      key: "share",
-      width: 170,
-      render: (_, record) => (
-        <Progress
-          percent={
-            totalOrders === 0
-              ? 0
-              : Math.round((record.orderCount / totalOrders) * 100)
-          }
-          size="small"
-        />
-      ),
-    },
-    {
-      title: "Đã thanh toán",
-      key: "paid",
-      width: 140,
+      title: "Đã giao",
+      key: "delivered",
+      width: 130,
       align: "center",
       render: (_, record) => (
         <Tag color={PAYMENT_STATUS_COLORS.paid}>
-          {record.paidCount} / {record.orderCount}
+          {record.deliveredCount} / {record.orderCount}
         </Tag>
       ),
     },
     {
-      title: "Doanh thu đã thu",
+      title: "Doanh thu",
       dataIndex: "revenue",
       key: "revenue",
       width: 170,
       render: (v) => <strong>{formatCurrency(v)}</strong>,
     },
     {
-      title: "Chưa thu",
+      title: "Đang xử lý",
       dataIndex: "pendingRevenue",
       key: "pendingRevenue",
       width: 150,
@@ -185,7 +183,7 @@ const PaymentMethods = () => {
         <Col xs={24} sm={8}>
           <Card size="small">
             <Statistic
-              title="Doanh thu đã thu được"
+              title="Doanh thu (đơn đã giao)"
               value={totalRevenue}
               formatter={(v) => formatCurrency(v)}
               prefix={<DollarOutlined style={{ color: "#52c41a" }} />}
@@ -210,9 +208,7 @@ const PaymentMethods = () => {
         pagination={false}
       />
 
-      <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 12 }}>
-        Ghi chú: "Chưa thu" là tiền của các đơn đã đặt nhưng {PAYMENT_STATUS_LABELS.pending.toLowerCase()} — với COD là đơn chưa giao xong, với VNPAY là đơn khách bỏ dở giữa chừng.
-      </Text>
+    
     </Card>
   );
 };

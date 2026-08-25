@@ -8,8 +8,10 @@ import api, { unwrap } from "../lib/axios";
 // Khi backend làm xong /admin/stats, chỉ cần thay getStatsSource + các hàm
 // build* bên dưới bằng lời gọi API tương ứng, Dashboard.jsx không phải sửa.
 
-// Đơn đã hủy không tính vào doanh thu
-const isRevenueOrder = (order) => order.status !== "cancelled";
+// Chỉ đơn ĐÃ GIAO mới tính vào doanh thu.
+// Đơn đang xử lý chưa chắc tới tay khách (có thể huỷ giữa chừng, hoàn hàng),
+// tính vào doanh thu sẽ báo số ảo.
+const isRevenueOrder = (order) => order.status === "delivered";
 
 export const getStatsSource = async () => {
   const [orders, products, variants] = await Promise.all([
@@ -33,19 +35,44 @@ export const buildOverview = ({ orders, products, variants }) => {
     orders.map((o) => o.user?._id || o.user).filter(Boolean).map(String)
   );
 
+  // Tiền của đơn đang trên đường — chưa tính vào doanh thu nhưng nên theo dõi
+  const inProgress = orders.filter((o) =>
+    ["pending", "confirmed", "shipping"].includes(o.status)
+  );
+
   return {
     revenue: revenueOrders.reduce((sum, o) => sum + (o.total || 0), 0),
 
-    paidRevenue: orders
-      .filter((o) => o.paymentStatus === "paid")
-      .reduce((sum, o) => sum + (o.total || 0), 0),
+    pendingRevenue: inProgress.reduce((sum, o) => sum + (o.total || 0), 0),
+
+    avgOrderValue: revenueOrders.length
+      ? Math.round(
+          revenueOrders.reduce((sum, o) => sum + (o.total || 0), 0) /
+            revenueOrders.length
+        )
+      : 0,
 
     orders: {
       total: orders.length,
       pending: countStatus("pending"),
+      confirmed: countStatus("confirmed"),
+      shipping: countStatus("shipping"),
       delivered: countStatus("delivered"),
       cancelled: countStatus("cancelled"),
     },
+
+    // Cho biểu đồ cột: số đơn theo từng trạng thái
+    byStatus: ["pending", "confirmed", "shipping", "delivered", "cancelled"].map(
+      (s) => ({ status: s, count: countStatus(s) })
+    ),
+
+    // Cho biểu đồ tròn: tỉ lệ phương thức thanh toán (không tính đơn huỷ)
+    byPaymentMethod: ["cod", "vnpay"].map((m) => ({
+      method: m,
+      count: orders.filter(
+        (o) => o.paymentMethod === m && o.status !== "cancelled"
+      ).length,
+    })),
 
     customers: customerIds.size,
 

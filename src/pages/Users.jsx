@@ -25,7 +25,7 @@ import { getErrorMessage } from "../lib/axios";
 import { formatDate } from "../lib/common";
 import { useAuthStore } from "../store/useAuthStore";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 // Model User chỉ có 2 vai trò: "user" và "admin" (chưa có "staff")
 const ROLE_LABELS = { user: "Khách hàng", admin: "Admin" };
@@ -209,12 +209,6 @@ const Users = () => {
         loading={loading}
         locale={{ emptyText: "Chưa có tài khoản nào" }}
       />
-
-      <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 12 }}>
-        Muốn nâng quyền admin cho một tài khoản, hiện phải sửa trực tiếp trong MongoDB Compass:
-        collection <Text code>users</Text>, đổi trường <Text code>role</Text> thành{" "}
-        <Text code>admin</Text>.
-      </Text>
     </Card>
   );
 };

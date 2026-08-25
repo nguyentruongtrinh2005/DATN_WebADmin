@@ -15,6 +15,7 @@ import {
   Spin,
   Alert,
   Image,
+  Tooltip,
   message,
 } from "antd";
 import {
@@ -117,6 +118,15 @@ const OrderDetail = () => {
   const nextAction = NEXT_STATUS[order.status];
   const canCancel = ["pending", "confirmed"].includes(order.status);
 
+  // Đơn VNPAY phải thanh toán xong mới được xác nhận, tránh giao hàng cho
+  // đơn khách bỏ dở giữa chừng ở cổng thanh toán.
+  // Đơn COD thì không chặn: tiền chỉ thu được lúc giao, chặn ở đây là kẹt đơn.
+  const waitingPayment =
+    order.paymentMethod === "vnpay" && order.paymentStatus !== "paid";
+
+  const blockConfirm =
+    waitingPayment && nextAction?.status === "confirmed";
+
   // Thông tin giao hàng nằm trong order.shippingAddress
   const ship = order.shippingAddress || {};
 
@@ -191,14 +201,23 @@ const OrderDetail = () => {
       <Card style={{ marginBottom: 16 }}>
         <Space wrap>
           {nextAction && (
-            <Button
-              type="primary"
-              icon={nextAction.icon}
-              loading={actionLoading}
-              onClick={() => changeStatus(nextAction.status)}
+            <Tooltip
+              title={
+                blockConfirm
+                  ? "Đơn VNPAY chưa thanh toán — không xác nhận được"
+                  : ""
+              }
             >
-              {nextAction.label}
-            </Button>
+              <Button
+                type="primary"
+                icon={nextAction.icon}
+                loading={actionLoading}
+                disabled={blockConfirm}
+                onClick={() => changeStatus(nextAction.status)}
+              >
+                {nextAction.label}
+              </Button>
+            </Tooltip>
           )}
           {canCancel && (
             <Button
@@ -214,6 +233,16 @@ const OrderDetail = () => {
             In hóa đơn
           </Button>
         </Space>
+
+        {blockConfirm && (
+          <Alert
+            style={{ marginTop: 16 }}
+            type="warning"
+            showIcon
+            message="Đơn VNPAY chưa thanh toán"
+            description="Khách chọn thanh toán qua VNPAY nhưng cổng chưa báo kết quả thành công về hệ thống. Chỉ xác nhận đơn sau khi trạng thái thanh toán chuyển sang Đã thanh toán, hoặc hủy đơn nếu khách không thanh toán."
+          />
+        )}
 
         {order.status === "cancelled" ? (
           <Alert

@@ -146,12 +146,6 @@ const Brands = () => {
         </Button>
       </div>
 
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="Thương hiệu không xoá hẳn được — sản phẩm cũ vẫn tham chiếu tới nó."
-      />
 
       <Table
         columns={columns}

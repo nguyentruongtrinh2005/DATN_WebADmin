@@ -25,6 +25,14 @@ import {
 import {
   AreaChart,
   Area,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -51,6 +59,25 @@ import {
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
+// Màu cho biểu đồ trạng thái đơn, khớp với màu thẻ Tag trong bảng
+const STATUS_FILL = {
+  pending: "#FA8C16",
+  confirmed: "#1890FF",
+  shipping: "#13C2C2",
+  delivered: "#2ECC71",
+  cancelled: "#F5222D",
+};
+
+const METHOD_LABELS = { cod: "COD", vnpay: "VNPAY" };
+const METHOD_FILL = { cod: "#2ECC71", vnpay: "#1890FF" };
+
+// Rút gọn trục tiền: 2.500.000 -> 2.5tr
+const formatShort = (v) =>
+  v >= 1000000 ? `${(v / 1000000).toFixed(1)}tr` : v >= 1000 ? `${v / 1000}k` : v;
+
+const revenueTooltip = (value, name) =>
+  name === "revenue" ? [formatCurrency(value), "Doanh thu"] : [value, "Số đơn"];
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -59,6 +86,7 @@ const Dashboard = () => {
   const [source, setSource] = useState(null);
 
   const [groupBy, setGroupBy] = useState("month");
+  const [chartType, setChartType] = useState("area");
   const [dateRange, setDateRange] = useState([
     dayjs().subtract(6, "month"),
     dayjs(),
@@ -107,6 +135,27 @@ const Dashboard = () => {
     [source]
   );
 
+  const statusData = useMemo(
+    () =>
+      stats
+        ? stats.byStatus.map((s) => ({
+            ...s,
+            label: ORDER_STATUS_LABELS[s.status],
+          }))
+        : [],
+    [stats]
+  );
+
+  const methodData = useMemo(
+    () =>
+      stats
+        ? stats.byPaymentMethod
+            .filter((m) => m.count > 0)
+            .map((m) => ({ ...m, label: METHOD_LABELS[m.method] }))
+        : [],
+    [stats]
+  );
+
   if (loading || !stats) {
     return (
       <div style={{ textAlign: "center", padding: 100 }}>
@@ -147,24 +196,20 @@ const Dashboard = () => {
     <div>
       <Title level={3}>Thống kê tổng quan</Title>
 
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="Số liệu được tính trực tiếp từ danh sách đơn hàng và sản phẩm. Doanh thu không tính đơn đã hủy."
-      />
+    
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Tổng doanh thu"
+              title="Doanh thu (đơn đã giao)"
               value={stats.revenue}
               formatter={(v) => formatCurrency(v)}
               prefix={<DollarOutlined style={{ color: "#52c41a" }} />}
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Đã thanh toán: {formatCurrency(stats.paidRevenue)}
+              Đang xử lý: {formatCurrency(stats.pendingRevenue)} · TB/đơn:{" "}
+              {formatCurrency(stats.avgOrderValue)}
             </Text>
           </Card>
         </Col>
@@ -214,6 +259,16 @@ const Dashboard = () => {
         extra={
           <span>
             <Select
+              value={chartType}
+              onChange={setChartType}
+              style={{ width: 130, marginRight: 8 }}
+              options={[
+                { value: "area", label: "Biểu đồ miền" },
+                { value: "line", label: "Biểu đồ đường" },
+                { value: "bar", label: "Biểu đồ cột" },
+              ]}
+            />
+            <Select
               value={groupBy}
               onChange={setGroupBy}
               style={{ width: 120, marginRight: 8 }}
@@ -232,37 +287,95 @@ const Dashboard = () => {
         }
       >
         <ResponsiveContainer width="100%" height={320}>
-          <AreaChart data={revenueData}>
-            <defs>
-              <linearGradient id="revColor" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#2ecc71" stopOpacity={0.7} />
-                <stop offset="95%" stopColor="#2ecc71" stopOpacity={0.05} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis
-              tickFormatter={(v) =>
-                v >= 1000000 ? `${(v / 1000000).toFixed(1)}tr` : v
-              }
-            />
-            <Tooltip
-              formatter={(value, name) =>
-                name === "revenue"
-                  ? [formatCurrency(value), "Doanh thu"]
-                  : [value, "Số đơn"]
-              }
-            />
-            <Area
-              type="monotone"
-              dataKey="revenue"
-              stroke="#2ecc71"
-              fill="url(#revColor)"
-              strokeWidth={2}
-            />
-          </AreaChart>
+          {chartType === "bar" ? (
+            <BarChart data={revenueData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="date" />
+              <YAxis tickFormatter={formatShort} />
+              <Tooltip formatter={revenueTooltip} />
+              <Bar dataKey="revenue" fill="#2ecc71" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          ) : chartType === "line" ? (
+            <LineChart data={revenueData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="date" />
+              <YAxis tickFormatter={formatShort} />
+              <Tooltip formatter={revenueTooltip} />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#2ecc71"
+                strokeWidth={2.5}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          ) : (
+            <AreaChart data={revenueData}>
+              <defs>
+                <linearGradient id="revColor" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#2ecc71" stopOpacity={0.7} />
+                  <stop offset="95%" stopColor="#2ecc71" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="date" />
+              <YAxis tickFormatter={formatShort} />
+              <Tooltip formatter={revenueTooltip} />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="#2ecc71"
+                fill="url(#revColor)"
+                strokeWidth={2}
+              />
+            </AreaChart>
+          )}
         </ResponsiveContainer>
       </Card>
+
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} lg={14}>
+          <Card title="Số đơn theo trạng thái">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={statusData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" />
+                <YAxis allowDecimals={false} />
+                <Tooltip formatter={(v) => [v, "Số đơn"]} />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {statusData.map((entry) => (
+                    <Cell key={entry.status} fill={STATUS_FILL[entry.status]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+        <Col xs={24} lg={10}>
+          <Card title="Phương thức thanh toán">
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={methodData}
+                  dataKey="count"
+                  nameKey="label"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  label={(e) => `${e.label}: ${e.count}`}
+                >
+                  {methodData.map((entry) => (
+                    <Cell key={entry.method} fill={METHOD_FILL[entry.method]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => [v, "Số đơn"]} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+      </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={10}>
