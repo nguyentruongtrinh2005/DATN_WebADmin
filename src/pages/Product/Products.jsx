@@ -8,11 +8,6 @@ import {
   Typography,
   Tag,
   Image,
-  Drawer,
-  Descriptions,
-  Spin,
-  Empty,
-  Alert,
   message,
 } from "antd";
 import {
@@ -22,11 +17,7 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import {
-  getProducts,
-  setProductStatus,
-  getVariantsByProduct,
-} from "../../services/product-service";
+import { getProducts, setProductStatus } from "../../services/product-service";
 import StatusSwitch from "../../components/StatusSwitch";
 import { getErrorMessage, toImageUrl } from "../../lib/axios";
 import { formatCurrency } from "../../lib/common";
@@ -38,12 +29,6 @@ const Products = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
-
-  // Xem chi tiết sản phẩm (drawer bên phải)
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailProduct, setDetailProduct] = useState(null);
-  const [detailVariants, setDetailVariants] = useState([]);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -72,21 +57,8 @@ const Products = () => {
     }
   };
 
-  // Mở drawer chi tiết: dùng luôn record trong danh sách (đã có brand/category),
-  // chỉ cần gọi thêm API lấy biến thể của sản phẩm.
-  const openDetail = async (record) => {
-    setDetailProduct(record);
-    setDetailOpen(true);
-    setDetailLoading(true);
-    setDetailVariants([]);
-    try {
-      setDetailVariants(await getVariantsByProduct(record._id));
-    } catch (error) {
-      message.error(getErrorMessage(error));
-    } finally {
-      setDetailLoading(false);
-    }
-  };
+  // Chi tiết sản phẩm là một trang riêng, giống chi tiết đơn hàng
+  const openDetail = (record) => navigate(`/products/${record._id}`);
 
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(searchText.toLowerCase())
@@ -230,143 +202,6 @@ const Products = () => {
           record.status === "inactive" ? "row-inactive" : ""
         }
       />
-
-      <Drawer
-        title="Chi tiết sản phẩm"
-        width={520}
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        extra={
-          detailProduct && (
-            <Button
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={() => navigate(`/products/edit/${detailProduct._id}`)}
-            >
-              Sửa
-            </Button>
-          )
-        }
-      >
-        {detailProduct && (
-          <>
-            <div style={{ textAlign: "center", marginBottom: 16 }}>
-              {detailProduct.image ? (
-                <Image
-                  src={toImageUrl(detailProduct.image)}
-                  width={180}
-                  height={180}
-                  style={{ objectFit: "cover", borderRadius: 8 }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: 180,
-                    height: 180,
-                    margin: "0 auto",
-                    borderRadius: 8,
-                    background: "#f0f0f0",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#999",
-                  }}
-                >
-                  Chưa có ảnh
-                </div>
-              )}
-            </div>
-
-            <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label="Tên">
-                {detailProduct.name}
-              </Descriptions.Item>
-              <Descriptions.Item label="Thương hiệu">
-                {detailProduct.brand?.name || "—"}
-              </Descriptions.Item>
-              <Descriptions.Item label="Danh mục">
-                {detailProduct.category?.name || "—"}
-              </Descriptions.Item>
-              <Descriptions.Item label="Giá gốc">
-                {formatCurrency(detailProduct.price)}
-              </Descriptions.Item>
-              <Descriptions.Item label="Giá giảm">
-                {detailProduct.discountPrice > 0
-                  ? formatCurrency(detailProduct.discountPrice)
-                  : "—"}
-              </Descriptions.Item>
-              <Descriptions.Item label="Đã bán">
-                {detailProduct.sold || 0}
-              </Descriptions.Item>
-              <Descriptions.Item label="Đánh giá">
-                {detailProduct.rating ?? "—"} ★
-              </Descriptions.Item>
-              <Descriptions.Item label="Nổi bật">
-                {detailProduct.isFeatured ? "Có" : "Không"}
-              </Descriptions.Item>
-              <Descriptions.Item label="Trạng thái">
-                {detailProduct.status === "active" ? (
-                  <Tag color="green">Đang bán</Tag>
-                ) : (
-                  <Tag color="red">Đã ẩn</Tag>
-                )}
-              </Descriptions.Item>
-              <Descriptions.Item label="Mô tả">
-                {detailProduct.description || "—"}
-              </Descriptions.Item>
-            </Descriptions>
-
-            <Title level={5} style={{ marginTop: 20 }}>
-              Biến thể ({detailVariants.length})
-            </Title>
-
-            {detailLoading ? (
-              <div style={{ textAlign: "center", padding: 24 }}>
-                <Spin />
-              </div>
-            ) : detailVariants.length === 0 ? (
-              <Empty description="Chưa có biến thể" />
-            ) : (
-              <Table
-                size="small"
-                pagination={false}
-                rowKey="_id"
-                dataSource={detailVariants}
-                columns={[
-                  {
-                    title: "Màu",
-                    key: "color",
-                    render: (_, v) => (
-                      <Space>
-                        <span
-                          style={{
-                            display: "inline-block",
-                            width: 14,
-                            height: 14,
-                            borderRadius: "50%",
-                            background: v.colorCode,
-                            border: "1px solid #ddd",
-                          }}
-                        />
-                        {v.colorName}
-                      </Space>
-                    ),
-                  },
-                  { title: "Size", dataIndex: "size", key: "size", align: "center" },
-                  {
-                    title: "Tồn kho",
-                    dataIndex: "stock",
-                    key: "stock",
-                    align: "center",
-                    render: (s) =>
-                      s > 0 ? s : <Tag color="red">Hết</Tag>,
-                  },
-                ]}
-              />
-            )}
-          </>
-        )}
-      </Drawer>
     </Card>
   );
 };

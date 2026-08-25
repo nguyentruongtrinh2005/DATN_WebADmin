@@ -2,8 +2,8 @@ import dayjs from "dayjs";
 import api, { unwrap } from "../lib/axios";
 
 // API chưa có nhóm /admin/stats/* (dashboard, revenue, top-products,
-// recent-orders đều 404). Nên trang Thống kê tự tính từ 3 endpoint có sẵn:
-// /admin/orders, /admin/products, /admin/product-variants.
+// recent-orders đều 404). Nên trang Thống kê tự tính từ 4 endpoint có sẵn:
+// /admin/orders, /admin/products, /admin/product-variants, /admin/users.
 //
 // Khi backend làm xong /admin/stats, chỉ cần thay getStatsSource + các hàm
 // build* bên dưới bằng lời gọi API tương ứng, Dashboard.jsx không phải sửa.
@@ -14,26 +14,40 @@ import api, { unwrap } from "../lib/axios";
 const isRevenueOrder = (order) => order.status === "delivered";
 
 export const getStatsSource = async () => {
-  const [orders, products, variants] = await Promise.all([
+  const [orders, products, variants, users] = await Promise.all([
     unwrap(await api.get("/admin/orders")),
     unwrap(await api.get("/admin/products")),
     unwrap(await api.get("/admin/product-variants")),
+    unwrap(await api.get("/admin/users")),
   ]);
 
-  return { orders, products, variants };
+  return { orders, products, variants, users };
 };
 
 // Bốn ô số liệu ở đầu trang
-export const buildOverview = ({ orders, products, variants }) => {
+export const buildOverview = ({ orders, products, variants, users = [] }) => {
   const revenueOrders = orders.filter(isRevenueOrder);
 
   const countStatus = (status) =>
     orders.filter((o) => o.status === status).length;
 
-  // API chưa có /admin/users -> đếm số khách đã từng đặt hàng thay cho tổng user
-  const customerIds = new Set(
-    orders.map((o) => o.user?._id || o.user).filter(Boolean).map(String)
+  // Tài khoản admin không phải khách hàng, đếm giống trang Quản lý khách hàng
+  const customerList = users.filter((u) => u.role !== "admin");
+
+  // "Đã mua" phải là mua thật, tức có ít nhất một đơn ĐÃ GIAO.
+  // Đặt rồi huỷ thì chưa mua gì cả, không tính vào đây.
+  const buyerIds = new Set(
+    revenueOrders
+      .map((o) => o.user?._id || o.user)
+      .filter(Boolean)
+      .map(String)
   );
+
+  // Khách đã mua nhưng tài khoản đã bị xoá vẫn còn trong đơn cũ,
+  // nên chốt lại theo danh sách tài khoản hiện có để hai số không vênh nhau
+  const buyersInList = customerList.filter((u) =>
+    buyerIds.has(String(u._id))
+  ).length;
 
   // Tiền của đơn đang trên đường — chưa tính vào doanh thu nhưng nên theo dõi
   const inProgress = orders.filter((o) =>
@@ -74,7 +88,11 @@ export const buildOverview = ({ orders, products, variants }) => {
       ).length,
     })),
 
-    customers: customerIds.size,
+    customers: {
+      total: customerList.length,
+      bought: buyersInList,
+      notBought: customerList.length - buyersInList,
+    },
 
     products: {
       total: products.length,

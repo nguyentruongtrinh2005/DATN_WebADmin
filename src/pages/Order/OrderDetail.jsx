@@ -26,6 +26,7 @@ import {
   CloseCircleOutlined,
 } from "@ant-design/icons";
 import { getOrderById, updateOrderStatus } from "../../services/order-service";
+import { ColorDot } from "../../components/ColorPalette";
 import { getErrorMessage, toImageUrl } from "../../lib/axios";
 import {
   formatCurrency,
@@ -134,26 +135,39 @@ const OrderDetail = () => {
     {
       title: "Sản phẩm",
       key: "name",
-      render: (_, item) => (
-        <Space>
-          {item.product?.image && (
-            <Image
-              src={toImageUrl(item.product.image)}
-              width={48}
-              height={48}
-              style={{ objectFit: "cover", borderRadius: 4 }}
-            />
-          )}
-          <div>
-            <div>{item.product?.name || "Sản phẩm đã bị xoá"}</div>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {item.variant
-                ? `${item.variant.colorName} / Size ${item.variant.size}`
-                : "—"}
-            </Text>
-          </div>
-        </Space>
-      ),
+      render: (_, item) => {
+        // Khách chọn màu nào thì hiện ảnh của màu đó.
+        // Biến thể không có ảnh riêng mới lùi về ảnh sản phẩm chính.
+        const image = item.variant?.image || item.product?.image;
+
+        return (
+          <Space>
+            {image && (
+              <Image
+                src={toImageUrl(image)}
+                width={48}
+                height={48}
+                style={{ objectFit: "cover", borderRadius: 4 }}
+              />
+            )}
+            <div>
+              <div>{item.product?.name || "Sản phẩm đã bị xoá"}</div>
+              {item.variant ? (
+                <Space size={6} style={{ fontSize: 12 }}>
+                  <ColorDot size={12} code={item.variant.colorCode} />
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {item.variant.colorName} / Size {item.variant.size}
+                  </Text>
+                </Space>
+              ) : (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  —
+                </Text>
+              )}
+            </div>
+          </Space>
+        );
+      },
     },
     { title: "Đơn giá", dataIndex: "price", render: (v) => formatCurrency(v) },
     { title: "SL", dataIndex: "quantity", align: "center" },

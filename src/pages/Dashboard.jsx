@@ -208,8 +208,8 @@ const Dashboard = () => {
               prefix={<DollarOutlined style={{ color: "#52c41a" }} />}
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Đang xử lý: {formatCurrency(stats.pendingRevenue)} · TB/đơn:{" "}
-              {formatCurrency(stats.avgOrderValue)}
+              Đang xử lý: {formatCurrency(stats.pendingRevenue)} · Trung bình
+              mỗi đơn: {formatCurrency(stats.avgOrderValue)}
             </Text>
           </Card>
         </Col>
@@ -229,12 +229,13 @@ const Dashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Khách đã mua hàng"
-              value={stats.customers}
+              title="Tổng khách hàng"
+              value={stats.customers.total}
               prefix={<UserOutlined style={{ color: "#722ed1" }} />}
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              API chưa có thống kê người dùng
+              Đã mua: {stats.customers.bought} · Chưa mua:{" "}
+              {stats.customers.notBought}
             </Text>
           </Card>
         </Col>

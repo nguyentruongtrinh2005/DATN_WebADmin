@@ -5,6 +5,7 @@ import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Products from "./pages/Product/Products.jsx";
 import ProductForm from "./pages/Product/ProductForm.jsx";
+import ProductDetail from "./pages/Product/ProductDetail.jsx";
 import Brands from "./pages/Brands.jsx";
 import Categories from "./pages/Categories.jsx";
 import Orders from "./pages/Order/Orders.jsx";
@@ -41,6 +42,8 @@ const App = () => {
           <Route path="/products" element={<Products />} />
           <Route path="/products/create" element={<ProductForm />} />
           <Route path="/products/edit/:id" element={<ProductForm />} />
+          {/* Đặt sau /create và /edit để hai route tĩnh kia được ưu tiên khớp */}
+          <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/orders/:id" element={<OrderDetail />} />
           <Route path="/vouchers" element={<Vouchers />} />
