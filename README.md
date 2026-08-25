@@ -4,10 +4,7 @@ Web quản trị cho hệ thống bán giày thể thao RYDE.
 
 ## Nhóm thực hiện
 
-| Thành viên | Phụ trách |
-|---|---|
-| **Nguyễn Trường Trinh** | 
-| **Nguyễn Duy Long** | 
+MD-07
 
 ## Công nghệ
 
