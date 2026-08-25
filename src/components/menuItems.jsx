@@ -28,7 +28,7 @@ export const menuItems = [
   { key: "/orders", icon: <OrderedListOutlined />, label: "Quản lý đơn hàng", roles: ["staff", "admin"] },
   { key: "/vouchers", icon: <GiftOutlined />, label: "Quản lý voucher", roles: ["staff", "admin"] },
   { key: "/reviews", icon: <CommentOutlined />, label: "Đánh giá & Bình luận", roles: ["staff", "admin"] },
-  { key: "/users", icon: <UserOutlined />, label: "Quản lý người dùng", roles: ["admin"] },
+  { key: "/users", icon: <UserOutlined />, label: "Quản lý khách hàng", roles: ["admin"] },
   { key: "/payment-methods", icon: <CreditCardOutlined />, label: "Phương thức thanh toán", roles: ["admin"] },
 
   // ==========================================================
