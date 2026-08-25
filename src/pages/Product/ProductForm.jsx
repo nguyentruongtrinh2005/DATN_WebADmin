@@ -37,7 +37,8 @@ import {
 import { getBrands } from "../../services/brand-service";
 import { getCategories } from "../../services/category-service";
 import { getErrorMessage, toImageUrl } from "../../lib/axios";
-import { COLOR_OPTIONS, SIZE_OPTIONS, getColorCode } from "../../lib/common";
+import { SIZE_OPTIONS, normalizeHex } from "../../lib/common";
+import ColorPalette, { ColorDot } from "../../components/ColorPalette";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -59,8 +60,11 @@ const ProductForm = () => {
   const [variants, setVariants] = useState([]);
   const [deletedVariantIds, setDeletedVariantIds] = useState([]);
 
+  // Bảng màu của riêng sản phẩm này, admin tự thêm chứ không cố định sẵn
+  const [colors, setColors] = useState([]);
+
   // Khối "thêm nhanh": chọn 1 màu + nhiều size cùng lúc
-  const [quickColor, setQuickColor] = useState(COLOR_OPTIONS[0].name);
+  const [quickColor, setQuickColor] = useState(null);
   const [quickSizes, setQuickSizes] = useState([]);
   const [quickStock, setQuickStock] = useState(10);
 
@@ -89,7 +93,21 @@ const ProductForm = () => {
             isFeatured: product.isFeatured,
           });
 
-          setVariants(await getVariantsByProduct(id));
+          const variantList = await getVariantsByProduct(id);
+          setVariants(variantList);
+
+          // Bảng màu dựng lại từ các biến thể đã lưu
+          const palette = [];
+          for (const v of variantList) {
+            if (!palette.some((c) => c.name === v.colorName)) {
+              palette.push({
+                name: v.colorName,
+                code: normalizeHex(v.colorCode) || "#000000",
+              });
+            }
+          }
+          setColors(palette);
+          setQuickColor(palette[0]?.name ?? null);
         }
       } catch (error) {
         message.error(getErrorMessage(error));
@@ -101,7 +119,55 @@ const ProductForm = () => {
 
   const rowKeyOf = (v) => v._id || v.tempId;
 
+  const colorCodeOf = (name) =>
+    colors.find((c) => c.name === name)?.code || "#000000";
+
+  const countVariantsOfColor = (name) =>
+    variants.filter((v) => v.colorName === name).length;
+
+  const addColor = (color) => {
+    setColors([...colors, color]);
+    setQuickColor(color.name);
+  };
+
+  // Sửa màu thì phải sửa luôn mọi biến thể đang dùng màu đó,
+  // vì API yêu cầu một tên màu chỉ ứng với đúng một mã màu.
+  const editColor = (oldName, next) => {
+    setColors(colors.map((c) => (c.name === oldName ? next : c)));
+
+    setVariants(
+      variants.map((v) =>
+        v.colorName === oldName
+          ? { ...v, colorName: next.name, colorCode: next.code }
+          : v
+      )
+    );
+
+    if (quickColor === oldName) setQuickColor(next.name);
+  };
+
+  const removeColor = (name) => {
+    const affected = variants.filter((v) => v.colorName === name);
+
+    setDeletedVariantIds([
+      ...deletedVariantIds,
+      ...affected.filter((v) => v._id).map((v) => v._id),
+    ]);
+
+    setVariants(variants.filter((v) => v.colorName !== name));
+
+    const rest = colors.filter((c) => c.name !== name);
+    setColors(rest);
+
+    if (quickColor === name) setQuickColor(rest[0]?.name ?? null);
+  };
+
   const addQuickVariants = () => {
+    if (!quickColor) {
+      message.warning("Thêm và chọn một màu trước");
+      return;
+    }
+
     if (quickSizes.length === 0) {
       message.warning("Chọn ít nhất một size");
       return;
@@ -114,7 +180,7 @@ const ProductForm = () => {
       .map((size, i) => ({
         tempId: `${Date.now()}-${i}`,
         colorName: quickColor,
-        colorCode: getColorCode(quickColor),
+        colorCode: colorCodeOf(quickColor),
         size,
         stock: quickStock ?? 0,
         image: "",
@@ -140,9 +206,9 @@ const ProductForm = () => {
       variants.map((v) => {
         if (rowKeyOf(v) !== key) return v;
 
-        // Đổi tên màu thì mã màu phải đổi theo, API bắt buộc khớp cặp này
+        // Đổi màu của dòng thì mã màu phải lấy theo bảng màu, API bắt buộc khớp cặp này
         if (field === "colorName") {
-          return { ...v, colorName: value, colorCode: getColorCode(value) };
+          return { ...v, colorName: value, colorCode: colorCodeOf(value) };
         }
 
         return { ...v, [field]: value };
@@ -191,7 +257,9 @@ const ProductForm = () => {
         const body = {
           product: productId,
           colorName: variant.colorName,
-          colorCode: variant.colorCode || getColorCode(variant.colorName),
+          colorCode:
+            normalizeHex(variant.colorCode) ||
+            colorCodeOf(variant.colorName),
           size: Number(variant.size),
           stock: Number(variant.stock) || 0,
           image: variant.image || "",
@@ -221,22 +289,21 @@ const ProductForm = () => {
       dataIndex: "colorName",
       render: (colorName, record) => (
         <Space>
-          <span
-            style={{
-              display: "inline-block",
-              width: 16,
-              height: 16,
-              borderRadius: "50%",
-              background: record.colorCode || getColorCode(colorName),
-              border: "1px solid #ddd",
-            }}
+          <ColorDot
+            size={16}
+            code={normalizeHex(record.colorCode) || colorCodeOf(colorName)}
           />
           <Select
             value={colorName}
-            style={{ width: 140 }}
-            options={COLOR_OPTIONS.map((c) => ({
+            style={{ width: 150 }}
+            options={colors.map((c) => ({
               value: c.name,
-              label: c.name,
+              label: (
+                <Space size={6}>
+                  <ColorDot size={12} code={c.code} />
+                  {c.name}
+                </Space>
+              ),
             }))}
             onChange={(v) => updateVariantRow(rowKeyOf(record), "colorName", v)}
           />
@@ -411,7 +478,7 @@ const ProductForm = () => {
             <Form.Item
               name="image"
               label="Ảnh sản phẩm (dán link)"
-              extra="Bấm chuột phải vào ảnh trên mạng > Sao chép địa chỉ hình ảnh, rồi dán vào đây."
+              extra=" Sao chép địa chỉ hình ảnh, rồi dán vào đây."
               rules={[{ type: "url", message: "Link ảnh không hợp lệ!" }]}
             >
               <Input prefix={<LinkOutlined />} placeholder="https://..." allowClear />
@@ -433,44 +500,31 @@ const ProductForm = () => {
           title="Biến thể (Màu / Size / Tồn kho)"
           style={{ marginBottom: 24 }}
         >
-          <Alert
+          {/* <Alert
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
-            message="Chọn một màu rồi tích nhiều size cùng lúc — mỗi size sẽ thành một biến thể riêng."
-          />
+            message="Bấm “Thêm màu” để tạo màu của sản phẩm, chọn màu rồi tích nhiều size cùng lúc — mỗi size sẽ thành một biến thể riêng."
+          /> */}
 
-          <Space wrap align="end" style={{ marginBottom: 16 }}>
-            <div>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Màu
-              </Text>
-              <br />
-              <Select
+          <div style={{ marginBottom: 16 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Màu của sản phẩm
+            </Text>
+            <div style={{ marginTop: 8 }}>
+              <ColorPalette
+                colors={colors}
                 value={quickColor}
-                style={{ width: 160 }}
-                onChange={setQuickColor}
-                options={COLOR_OPTIONS.map((c) => ({
-                  value: c.name,
-                  label: (
-                    <Space>
-                      <span
-                        style={{
-                          display: "inline-block",
-                          width: 12,
-                          height: 12,
-                          borderRadius: "50%",
-                          background: c.code,
-                          border: "1px solid #ddd",
-                        }}
-                      />
-                      {c.name}
-                    </Space>
-                  ),
-                }))}
+                onSelect={setQuickColor}
+                onAdd={addColor}
+                onEdit={editColor}
+                onDelete={removeColor}
+                usageOf={countVariantsOfColor}
               />
             </div>
+          </div>
 
+          <Space wrap align="end" style={{ marginBottom: 16 }}>
             <div>
               <Text type="secondary" style={{ fontSize: 12 }}>
                 Size (chọn nhiều)
@@ -515,7 +569,7 @@ const ProductForm = () => {
             rowKey={rowKeyOf}
             pagination={false}
             size="small"
-            locale={{ emptyText: "Chưa có biến thể — chọn màu và size ở trên" }}
+            locale={{ emptyText: "Chưa có biến thể — thêm màu và chọn size ở trên" }}
             footer={() => (
               <Space>
                 <Tag>{variants.length} biến thể</Tag>
