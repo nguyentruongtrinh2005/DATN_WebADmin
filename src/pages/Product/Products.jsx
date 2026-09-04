@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Table,
   Input,
@@ -18,6 +18,7 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { getProducts, setProductStatus } from "../../services/product-service";
+import { getOrders } from "../../services/order-service";
 import StatusSwitch from "../../components/StatusSwitch";
 import { getErrorMessage, toImageUrl } from "../../lib/axios";
 import { formatCurrency } from "../../lib/common";
@@ -27,13 +28,43 @@ const { Title } = Typography;
 const Products = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
+
+  // Chỉ tính đơn đã giao, thống nhất với cách tính doanh thu ở trang Thống kê:
+  // đơn chưa giao xong thì chưa coi là đã bán, đơn huỷ thì không tính.
+  const soldByProduct = useMemo(() => {
+    const map = {};
+
+    for (const order of orders) {
+      if (order?.status !== "delivered") continue;
+
+      for (const item of order?.items || []) {
+        const productId = item?.product?._id || item?.product;
+
+        if (!productId) continue;
+
+        map[productId] = (map[productId] || 0) + (Number(item?.quantity) || 0);
+      }
+    }
+
+    return map;
+  }, [orders]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      setProducts(await getProducts());
+      // API không có sẵn số lượng đã bán: trường Product.sold tồn tại trong
+      // model nhưng không có chỗ nào tăng nó, nên luôn bằng 0. Vì vậy web tự
+      // cộng từ đơn hàng, giống cách trang Thống kê đang làm.
+      const [productList, orderList] = await Promise.all([
+        getProducts(),
+        getOrders(),
+      ]);
+
+      setProducts(productList);
+      setOrders(orderList);
     } catch (error) {
       message.error(getErrorMessage(error));
     } finally {
@@ -127,10 +158,11 @@ const Products = () => {
     },
     {
       title: "Đã bán",
-      dataIndex: "sold",
       key: "sold",
       align: "center",
-      sorter: (a, b) => a.sold - b.sold,
+      render: (_, record) => soldByProduct[record._id] || 0,
+      sorter: (a, b) =>
+        (soldByProduct[a._id] || 0) - (soldByProduct[b._id] || 0),
     },
     {
       title: "Trạng thái",

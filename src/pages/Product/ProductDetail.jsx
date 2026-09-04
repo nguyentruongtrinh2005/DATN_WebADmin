@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -29,6 +29,7 @@ import {
 } from "../../services/product-service";
 import StatusSwitch from "../../components/StatusSwitch";
 import { ColorDot } from "../../components/ColorPalette";
+import { getOrders } from "../../services/order-service";
 import { getErrorMessage, toImageUrl } from "../../lib/axios";
 import { formatCurrency, formatDate } from "../../lib/common";
 
@@ -40,20 +41,43 @@ const ProductDetail = () => {
 
   const [product, setProduct] = useState(null);
   const [variants, setVariants] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  // Đếm số đã bán từ đơn đã giao, thống nhất với trang Sản phẩm và Thống kê.
+  const soldCount = useMemo(() => {
+    let total = 0;
+
+    for (const order of orders) {
+      if (order?.status !== "delivered") continue;
+
+      for (const item of order?.items || []) {
+        const productId = item?.product?._id || item?.product;
+
+        if (String(productId) === String(id)) {
+          total += Number(item?.quantity) || 0;
+        }
+      }
+    }
+
+    return total;
+  }, [orders, id]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Hai lời gọi độc lập nhau, chạy song song cho nhanh
-      const [detail, variantList] = await Promise.all([
+      // Ba lời gọi độc lập nhau, chạy song song cho nhanh.
+      // Đơn hàng dùng để đếm số đã bán, vì API không tăng Product.sold.
+      const [detail, variantList, orderList] = await Promise.all([
         getProductDetail(id),
         getVariantsByProduct(id),
+        getOrders(),
       ]);
 
       setProduct(detail);
       setVariants(variantList);
+      setOrders(orderList);
       setNotFound(false);
     } catch (error) {
       setNotFound(true);
@@ -280,7 +304,7 @@ const ProductDetail = () => {
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
             <Col xs={12} sm={6}>
               <Card size="small">
-                <Statistic title="Đã bán" value={product.sold || 0} />
+                <Statistic title="Đã bán" value={soldCount} />
               </Card>
             </Col>
             <Col xs={12} sm={6}>
