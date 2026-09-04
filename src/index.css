@@ -6,7 +6,58 @@
 
 body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: #f0f2f5;
+  /* Nền do main.jsx đặt lại theo chế độ sáng/tối. Giá trị này chỉ là
+     màu tạm trong lúc React chưa dựng xong, tránh nháy trắng. */
+  background: #eef1f0;
+}
+
+/* Menu bên trái: chữ đậm và to hơn mặc định của Ant Design cho dễ đọc,
+   khoảng cách chữ hơi giãn để các mục không dính vào nhau. */
+.ant-layout-sider .ant-menu-item {
+  font-weight: 600;
+  font-size: 14.5px;
+  letter-spacing: 0.01em;
+}
+
+.ant-layout-sider .ant-menu-item .anticon {
+  font-size: 17px;
+}
+
+/* Di chuột vào: nền đổi rõ hơn và đẩy nhẹ sang phải để thấy được phản hồi.
+   Chỉ dùng transform, không đụng vào padding hay margin, tránh làm trình
+   duyệt tính lại bố cục mỗi khung hình. */
+.ant-layout-sider .ant-menu-item {
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.ant-layout-sider .ant-menu-item:hover {
+  transform: translateX(3px);
+}
+
+/* Mục đang chọn có thêm vạch màu bên trái để phân biệt với mục đang hover. */
+.ant-layout-sider .ant-menu-item-selected {
+  position: relative;
+}
+
+.ant-layout-sider .ant-menu-item-selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ant-layout-sider .ant-menu-item {
+    transition: none;
+  }
+
+  .ant-layout-sider .ant-menu-item:hover {
+    transform: none;
+  }
 }
 
 /* Dòng đang bị ẩn (status = inactive) -> làm nhạt cho dễ phân biệt */

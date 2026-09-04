@@ -1,14 +1,30 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Form, Input, Button, message, Typography, Card, Divider } from "antd";
+import {
+  Form,
+  Input,
+  Button,
+  message,
+  Typography,
+  Card,
+  Divider,
+  theme,
+} from "antd";
 import { UserOutlined, LockOutlined, LoginOutlined } from "@ant-design/icons";
 import { login } from "../services/auth-service";
 import { getErrorMessage } from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
+import { useThemeStore } from "../store/useThemeStore";
 
 const { Title, Text } = Typography;
 
 const Login = () => {
+  // Lấy màu từ theme thay vì viết cứng, để đổi màu thương hiệu ở một chỗ
+  // trong main.jsx là cả trang đổi theo.
+  const { token } = theme.useToken();
+
+  const isDark = useThemeStore((state) => state.mode) === "dark";
+
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -42,7 +58,11 @@ const Login = () => {
         justifyContent: "center",
         alignItems: "center",
         height: "100vh",
-        background: "linear-gradient(135deg, #2ecc71, #1abc9c)",
+        // Chế độ tối dùng dải xanh trầm hẳn xuống; để nguyên dải sáng thì
+        // vào trang đăng nhập ban đêm là chói mắt.
+        background: isDark
+          ? "linear-gradient(135deg, #123829, #0E2C2A)"
+          : "linear-gradient(135deg, #2ecc71, #1abc9c)",
       }}
     >
       <Card
@@ -55,7 +75,7 @@ const Login = () => {
         }}
       >
         <div style={{ textAlign: "center" }}>
-          <Title level={2} style={{ color: "#2ecc71", margin: 0 }}>
+          <Title level={2} style={{ color: token.colorPrimary, margin: 0 }}>
             RYDE Admin
           </Title>
           <Text type="secondary">Quản trị hệ thống bán giày</Text>
@@ -95,7 +115,7 @@ const Login = () => {
               icon={<LoginOutlined />}
               loading={loading}
               block
-              style={{ height: 48, backgroundColor: "#2ecc71", fontWeight: 600 }}
+              style={{ height: 48, fontWeight: 600 }}
             >
               Đăng nhập
             </Button>

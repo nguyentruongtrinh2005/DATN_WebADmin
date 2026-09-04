@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Layout, Menu, Typography } from "antd";
+import { Layout, Menu, Typography, theme } from "antd";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { menuItems } from "./menuItems.jsx";
 import HeaderComponent from "./HeaderComponent.jsx";
@@ -9,6 +9,8 @@ const { Sider, Content } = Layout;
 const { Text } = Typography;
 
 const AdminLayout = () => {
+  const { token } = theme.useToken();
+
   const [collapsed, setCollapsed] = useState(false);
 
   // Màn hình hẹp hơn 992px — do Sider báo về qua onBreakpoint.
@@ -34,6 +36,10 @@ const AdminLayout = () => {
       ),
     }));
 
+  // Bề rộng thực tế của Sider. Header và vùng nội dung phải lùi đúng bằng
+  // con số này, nên tính một chỗ rồi dùng chung.
+  const siderWidth = collapsed ? (isNarrow ? 0 : 80) : 250;
+
   const selectedKey =
     menuItems.find((item) => location.pathname.startsWith(item.key))?.key ||
     "/dashboard";
@@ -44,7 +50,7 @@ const AdminLayout = () => {
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
-        theme="dark"
+        theme="light"
         width={250}
         // Máy tính: thu lại còn dải 80px vẫn thấy biểu tượng.
         // Dưới 992px: ẩn hẳn, vì 80px trên điện thoại là ăn mất chỗ của nội dung.
@@ -62,20 +68,22 @@ const AdminLayout = () => {
           bottom: 0,
           zIndex: 1000,
           overflow: "auto",
+          borderRight: `1px solid ${token.colorBorderSecondary}`,
         }}
       >
         <div
           style={{
             padding: collapsed ? "15px 0" : "25px 0",
             textAlign: "center",
-            borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+            borderBottom: `1px solid ${token.colorBorderSecondary}`,
             marginBottom: 10,
           }}
         >
           <Text
             strong
             style={{
-              color: "#fff",
+              // Xanh đậm của logo RYDE, đọc rõ trên nền trắng.
+              color: token.colorPrimary,
               fontSize: collapsed ? 16 : 24,
               textTransform: "uppercase",
             }}
@@ -85,7 +93,7 @@ const AdminLayout = () => {
         </div>
 
         <Menu
-          theme="dark"
+          theme="light"
           mode="inline"
           selectedKeys={[selectedKey]}
           items={visibleItems}
@@ -95,10 +103,14 @@ const AdminLayout = () => {
 
       <Layout
         style={{
-          marginLeft: collapsed ? (isNarrow ? 0 : 80) : 250,
+          marginLeft: siderWidth,
         }}
       >
-        <HeaderComponent collapsed={collapsed} setCollapsed={setCollapsed} />
+        <HeaderComponent
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          siderWidth={siderWidth}
+        />
 
         <Content style={{ margin: "80px 16px 16px 16px" }}>
           <Outlet />
