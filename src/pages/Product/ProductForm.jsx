@@ -342,6 +342,7 @@ const ProductForm = () => {
         <Space>
           {img && (
             <Image
+              alt="Ảnh biến thể sản phẩm"
               src={toImageUrl(img)}
               width={40}
               height={40}
@@ -486,6 +487,7 @@ const ProductForm = () => {
 
             {imageUrl && (
               <Image
+                alt="Xem trước ảnh sản phẩm"
                 src={toImageUrl(imageUrl)}
                 width={200}
                 style={{ borderRadius: 8 }}
@@ -564,6 +566,7 @@ const ProductForm = () => {
           </Space>
 
           <Table
+            scroll={{ x: "max-content" }}
             columns={variantColumns}
             dataSource={variants}
             rowKey={rowKeyOf}

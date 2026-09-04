@@ -201,6 +201,7 @@ const PaymentMethods = () => {
       </Row>
 
       <Table
+        scroll={{ x: "max-content" }}
         columns={columns}
         dataSource={rows}
         rowKey="key"

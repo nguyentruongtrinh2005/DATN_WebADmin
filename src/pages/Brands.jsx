@@ -116,8 +116,18 @@ const Brands = () => {
       key: "logo",
       width: 100,
       align: "center",
-      render: (logo) =>
-        logo ? <Image src={toImageUrl(logo)} width={48} height={48} style={{ objectFit: "contain" }} /> : "—",
+      render: (logo, record) =>
+        logo ? (
+          <Image
+            src={toImageUrl(logo)}
+            alt={`Logo thương hiệu ${record?.name || ""}`.trim()}
+            width={48}
+            height={48}
+            style={{ objectFit: "contain" }}
+          />
+        ) : (
+          "—"
+        ),
     },
     { title: "Tên thương hiệu", dataIndex: "name", key: "name" },
     {
@@ -168,6 +178,7 @@ const Brands = () => {
       />
 
       <Table
+        scroll={{ x: "max-content" }}
         columns={columns}
         dataSource={filtered}
         rowKey="_id"
@@ -212,6 +223,7 @@ const Brands = () => {
           {logoUrl && (
             <div style={{ marginTop: -8, marginBottom: 8 }}>
               <Image
+                alt="Xem trước logo thương hiệu"
                 src={toImageUrl(logoUrl)}
                 width={80}
                 height={80}

@@ -424,6 +424,7 @@ const Dashboard = () => {
         <Col xs={24} lg={14}>
           <Card title="Đơn hàng gần đây">
             <Table
+              scroll={{ x: "max-content" }}
               columns={orderColumns}
               dataSource={recentOrders}
               rowKey="_id"

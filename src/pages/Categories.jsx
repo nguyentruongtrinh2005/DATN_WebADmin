@@ -150,6 +150,7 @@ const Categories = () => {
       />
 
       <Table
+        scroll={{ x: "max-content" }}
         columns={columns}
         dataSource={filtered}
         rowKey="_id"

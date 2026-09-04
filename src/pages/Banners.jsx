@@ -124,7 +124,14 @@ const Banners = () => {
       dataIndex: "image",
       key: "image",
       width: 130,
-      render: (img) => <Image src={toImageUrl(img)} width={110} style={{ borderRadius: 6 }} />,
+      render: (img) => (
+        <Image
+          src={toImageUrl(img)}
+          alt="Ảnh banner"
+          width={110}
+          style={{ borderRadius: 6 }}
+        />
+      ),
     },
     { title: "Tiêu đề", dataIndex: "title", key: "title" },
     {
@@ -209,7 +216,7 @@ const Banners = () => {
         </Space>
       </div>
 
-      <Table columns={columns} dataSource={banners} rowKey="_id" loading={loading} />
+      <Table columns={columns} dataSource={banners} rowKey="_id" loading={loading} scroll={{ x: "max-content" }} />
 
       <Modal
         title={editing ? "Sửa banner/quảng cáo" : "Thêm banner/quảng cáo"}
@@ -264,7 +271,7 @@ const Banners = () => {
             </Upload>
             {image && (
               <div style={{ marginTop: 8 }}>
-                <Image src={toImageUrl(image)} width={200} />
+                <Image src={toImageUrl(image)} width={200} alt="Xem trước ảnh banner" />
               </div>
             )}
           </Form.Item>

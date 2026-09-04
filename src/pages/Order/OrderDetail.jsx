@@ -144,6 +144,7 @@ const OrderDetail = () => {
           <Space>
             {image && (
               <Image
+                alt="Ảnh sản phẩm trong đơn hàng"
                 src={toImageUrl(image)}
                 width={48}
                 height={48}
@@ -280,6 +281,7 @@ const OrderDetail = () => {
         <Col xs={24} lg={16}>
           <Card title="Sản phẩm">
             <Table
+              scroll={{ x: "max-content" }}
               columns={itemColumns}
               dataSource={order.items}
               rowKey={(r, i) => i}

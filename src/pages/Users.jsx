@@ -275,6 +275,7 @@ const Users = () => {
       />
 
       <Table
+        scroll={{ x: "max-content" }}
         columns={columns}
         dataSource={filtered}
         rowKey="_id"
@@ -372,6 +373,7 @@ const Users = () => {
 
             <Text strong>Lịch sử đơn hàng</Text>
             <Table
+              scroll={{ x: "max-content" }}
               style={{ marginTop: 8 }}
               columns={orderColumns}
               dataSource={detail.list}

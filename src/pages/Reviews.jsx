@@ -87,6 +87,7 @@ const Reviews = () => {
         <Space>
           {record.product?.image && (
             <Image
+              alt="Ảnh sản phẩm được đánh giá"
               src={toImageUrl(record.product.image)}
               width={44}
               height={44}
@@ -142,6 +143,7 @@ const Reviews = () => {
             <Space>
               {record.images.map((img, i) => (
                 <Image
+                  alt="Ảnh khách gửi kèm đánh giá"
                   key={i}
                   src={toImageUrl(img)}
                   width={48}
@@ -231,6 +233,7 @@ const Reviews = () => {
       </Row>
 
       <Table
+        scroll={{ x: "max-content" }}
         columns={columns}
         dataSource={filtered}
         rowKey="_id"

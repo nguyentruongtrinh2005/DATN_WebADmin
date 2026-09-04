@@ -5,3 +5,7 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Bộ skill impeccable cài cho AI agent, nặng ~5MB và không phải code của dự án.
+# Ai cần thì tự cài lại bằng: npx impeccable install
+.claude/

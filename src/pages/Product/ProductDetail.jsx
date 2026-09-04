@@ -119,6 +119,7 @@ const ProductDetail = () => {
       render: (img) =>
         img ? (
           <Image
+            alt="Ảnh biến thể sản phẩm"
             src={toImageUrl(img)}
             width={40}
             height={40}
@@ -220,6 +221,7 @@ const ProductDetail = () => {
           <Card>
             {product.image ? (
               <Image
+                alt="Ảnh sản phẩm"
                 src={toImageUrl(product.image)}
                 width="100%"
                 style={{
@@ -366,6 +368,7 @@ const ProductDetail = () => {
           <Empty description="Chưa có biến thể — bấm Sửa sản phẩm để thêm màu và size" />
         ) : (
           <Table
+            scroll={{ x: "max-content" }}
             size="small"
             rowKey="_id"
             columns={variantColumns}

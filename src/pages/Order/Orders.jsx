@@ -217,7 +217,7 @@ const Orders = () => {
         </Col>
       </Row>
 
-      <Table columns={columns} dataSource={filtered} rowKey="_id" loading={loading} />
+      <Table columns={columns} dataSource={filtered} rowKey="_id" loading={loading} scroll={{ x: "max-content" }} />
     </Card>
   );
 };

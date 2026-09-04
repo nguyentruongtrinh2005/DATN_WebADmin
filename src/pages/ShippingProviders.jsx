@@ -172,7 +172,7 @@ const ShippingProviders = () => {
         </Button>
       </div>
 
-      <Table columns={columns} dataSource={providers} rowKey="_id" loading={loading} />
+      <Table columns={columns} dataSource={providers} rowKey="_id" loading={loading} scroll={{ x: "max-content" }} />
 
       <Modal
         title={editing ? "Sửa đơn vị vận chuyển" : "Thêm đơn vị vận chuyển"}

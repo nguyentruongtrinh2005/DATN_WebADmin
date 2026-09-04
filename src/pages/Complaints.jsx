@@ -154,7 +154,7 @@ const Complaints = () => {
         />
       </div>
 
-      <Table columns={columns} dataSource={complaints} rowKey="_id" loading={loading} />
+      <Table columns={columns} dataSource={complaints} rowKey="_id" loading={loading} scroll={{ x: "max-content" }} />
 
       <Modal
         title="Xử lý khiếu nại"

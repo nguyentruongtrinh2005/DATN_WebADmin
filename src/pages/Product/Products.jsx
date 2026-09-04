@@ -73,7 +73,7 @@ const Products = () => {
       align: "center",
       render: (img) =>
         img ? (
-          <Image src={toImageUrl(img)} width={56} height={56} style={{ objectFit: "cover", borderRadius: 6 }} />
+          <Image src={toImageUrl(img)} width={56} height={56} style={{ objectFit: "cover", borderRadius: 6 }} alt="Ảnh sản phẩm" />
         ) : (
           "—"
         ),
@@ -194,6 +194,7 @@ const Products = () => {
       /> */}
 
       <Table
+        scroll={{ x: "max-content" }}
         columns={columns}
         dataSource={filtered}
         rowKey="_id"

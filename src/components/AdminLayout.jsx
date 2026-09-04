@@ -10,6 +10,9 @@ const { Text } = Typography;
 
 const AdminLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
+
+  // Màn hình hẹp hơn 992px — do Sider báo về qua onBreakpoint.
+  const [isNarrow, setIsNarrow] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthStore();
@@ -43,6 +46,15 @@ const AdminLayout = () => {
         onCollapse={setCollapsed}
         theme="dark"
         width={250}
+        // Máy tính: thu lại còn dải 80px vẫn thấy biểu tượng.
+        // Dưới 992px: ẩn hẳn, vì 80px trên điện thoại là ăn mất chỗ của nội dung.
+        breakpoint="lg"
+        collapsedWidth={isNarrow ? 0 : 80}
+        onBreakpoint={(broken) => {
+          setIsNarrow(broken);
+          setCollapsed(broken);
+        }}
+        zeroWidthTriggerStyle={{ top: 12 }}
         style={{
           position: "fixed",
           left: 0,
@@ -83,8 +95,7 @@ const AdminLayout = () => {
 
       <Layout
         style={{
-          marginLeft: collapsed ? 80 : 250,
-          transition: "margin-left 0.2s",
+          marginLeft: collapsed ? (isNarrow ? 0 : 80) : 250,
         }}
       >
         <HeaderComponent collapsed={collapsed} setCollapsed={setCollapsed} />

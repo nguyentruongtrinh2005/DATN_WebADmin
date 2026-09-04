@@ -165,7 +165,7 @@ const Notifications = () => {
         </Button>
       </div>
 
-      <Table columns={columns} dataSource={notifications} rowKey="_id" loading={loading} />
+      <Table columns={columns} dataSource={notifications} rowKey="_id" loading={loading} scroll={{ x: "max-content" }} />
 
       <Modal
         title={editing ? "Sửa thông báo" : "Thêm thông báo"}
