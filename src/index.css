@@ -8,7 +8,7 @@ body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   /* Nền do main.jsx đặt lại theo chế độ sáng/tối. Giá trị này chỉ là
      màu tạm trong lúc React chưa dựng xong, tránh nháy trắng. */
-  background: #eef1f0;
+  background: #eff1f5;
 }
 
 /* Menu bên trái: chữ đậm và to hơn mặc định của Ant Design cho dễ đọc,

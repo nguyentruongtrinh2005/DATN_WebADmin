@@ -7,41 +7,45 @@ import { useThemeStore } from "./store/useThemeStore";
 import "antd/dist/reset.css";
 import "./index.css";
 
-// Màu lấy từ logo RYDE trong thư mục logo/:
-//   #2ECC71 xanh thương hiệu, #1E8449 xanh đậm, #14181A mực, #6E7A7C xám
+// Màu lấy từ bảng màu của ứng dụng di động (ShoeStore/src/constants/colors.js)
+// để web quản trị và app cùng một nhận diện:
+//   #2563EB xanh dương chính, #F97316 cam phụ, #111827 mực, #6B7280 xám
 //
 // Hai chế độ dùng hai sắc xanh khác nhau, vì cùng một màu không thể đọc tốt
 // trên cả nền trắng lẫn nền đen:
-//   Sáng — #1E8449, chữ trắng trên nền này đạt 4.7:1, qua chuẩn WCAG AA.
-//          Dùng #2ECC71 thì chỉ 2.1:1, nút bấm mờ tịt.
-//   Tối  — #2ECC71, xanh đậm trên nền đen sẽ chìm; xanh sáng đạt khoảng 8:1.
+//   Sáng — #2563EB, chữ trắng trên nền này đạt 5.2:1, qua chuẩn WCAG AA.
+//   Tối  — #60A5FA, xanh #2563EB trên nền tối chỉ đạt 3.2:1 nên bị chìm;
+//          xanh nhạt hơn đạt khoảng 6.5:1.
+//
+// Màu xanh lá vẫn giữ cho colorSuccess: đó là màu mang nghĩa thành công,
+// không phải màu thương hiệu.
 
 const lightTheme = {
   algorithm: antdTheme.defaultAlgorithm,
   token: {
-    colorPrimary: "#1E8449",
-    colorLink: "#1E8449",
-    colorSuccess: "#2ECC71",
-    colorTextBase: "#14181A",
-    colorBgLayout: "#EEF1F0",
+    colorPrimary: "#2563EB",
+    colorLink: "#2563EB",
+    colorSuccess: "#16A34A",
+    colorTextBase: "#111827",
+    colorBgLayout: "#EFF1F5",
     borderRadius: 6,
   },
   components: {
     Layout: {
       siderBg: "#FFFFFF",
       triggerBg: "#FFFFFF",
-      triggerColor: "#14181A",
+      triggerColor: "#111827",
       headerBg: "#FFFFFF",
     },
     Menu: {
       itemBg: "#FFFFFF",
       // Mục đang chọn: nền xanh nhạt, chữ xanh đậm. Không tô nguyên khối
-      // #1E8449 vì trên nền trắng một mảng đậm như thế rất nặng mắt.
-      itemSelectedBg: "#DCEFE4",
-      itemSelectedColor: "#166437",
-      itemHoverBg: "#E4EBE7",
-      itemHoverColor: "#166437",
-      itemColor: "#3C4A44",
+      // #2563EB vì trên nền trắng một mảng đậm như thế rất nặng mắt.
+      itemSelectedBg: "#DEE8FC",
+      itemSelectedColor: "#1D4ED8",
+      itemHoverBg: "#E6EAF1",
+      itemHoverColor: "#1D4ED8",
+      itemColor: "#3F4854",
     },
   },
 };
@@ -49,28 +53,28 @@ const lightTheme = {
 const darkTheme = {
   algorithm: antdTheme.darkAlgorithm,
   token: {
-    colorPrimary: "#2ECC71",
-    colorLink: "#2ECC71",
-    colorSuccess: "#2ECC71",
-    colorBgLayout: "#0E1113",
+    colorPrimary: "#60A5FA",
+    colorLink: "#60A5FA",
+    colorSuccess: "#4ADE80",
+    colorBgLayout: "#0D1117",
     borderRadius: 6,
   },
   components: {
     Layout: {
       // Menu và header nhạt hơn nền trang một bậc, để ba lớp còn tách nhau
       // ra chứ không dính thành một mảng đen.
-      siderBg: "#191E20",
-      triggerBg: "#191E20",
-      triggerColor: "#E6EBE8",
-      headerBg: "#191E20",
+      siderBg: "#171C24",
+      triggerBg: "#171C24",
+      triggerColor: "#E6EAF0",
+      headerBg: "#171C24",
     },
     Menu: {
-      itemBg: "#191E20",
-      itemSelectedBg: "#1E3A2B",
-      itemSelectedColor: "#4FE08D",
-      itemHoverBg: "#232A2C",
-      itemHoverColor: "#4FE08D",
-      itemColor: "#B4BEB9",
+      itemBg: "#171C24",
+      itemSelectedBg: "#1C2E4F",
+      itemSelectedColor: "#7CB4FB",
+      itemHoverBg: "#212836",
+      itemHoverColor: "#7CB4FB",
+      itemColor: "#B6BECC",
     },
   },
 };
@@ -83,7 +87,7 @@ const Root = () => {
   // Nền của thẻ body nằm ngoài tầm với của ConfigProvider, phải tự đổi.
   // Thiếu bước này thì lúc chuyển sang tối sẽ lòi ra viền trắng quanh trang.
   useEffect(() => {
-    document.body.style.background = isDark ? "#0E1113" : "#EEF1F0";
+    document.body.style.background = isDark ? "#0D1117" : "#EFF1F5";
     document.documentElement.style.colorScheme = isDark ? "dark" : "light";
   }, [isDark]);
 

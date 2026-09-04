@@ -61,8 +61,8 @@ const Login = () => {
         // Chế độ tối dùng dải xanh trầm hẳn xuống; để nguyên dải sáng thì
         // vào trang đăng nhập ban đêm là chói mắt.
         background: isDark
-          ? "linear-gradient(135deg, #123829, #0E2C2A)"
-          : "linear-gradient(135deg, #2ecc71, #1abc9c)",
+          ? "linear-gradient(135deg, #16233D, #0F2233)"
+          : "linear-gradient(135deg, #2563EB, #0EA5E9)",
       }}
     >
       <Card

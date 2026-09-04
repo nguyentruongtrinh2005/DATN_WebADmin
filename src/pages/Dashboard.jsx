@@ -14,6 +14,7 @@ import {
   Avatar,
   Alert,
   message,
+  theme,
 } from "antd";
 import {
   DollarOutlined,
@@ -69,7 +70,8 @@ const STATUS_FILL = {
 };
 
 const METHOD_LABELS = { cod: "COD", vnpay: "VNPAY" };
-const METHOD_FILL = { cod: "#2ECC71", vnpay: "#1890FF" };
+// Cam phụ và xanh chính, lấy theo bảng màu của ứng dụng di động
+const METHOD_FILL = { cod: "#F97316", vnpay: "#2563EB" };
 
 // Rút gọn trục tiền: 2.500.000 -> 2.5tr
 const formatShort = (v) =>
@@ -79,6 +81,9 @@ const revenueTooltip = (value, name) =>
   name === "revenue" ? [formatCurrency(value), "Doanh thu"] : [value, "Số đơn"];
 
 const Dashboard = () => {
+  // Màu biểu đồ doanh thu lấy từ theme để tự đổi theo chế độ sáng/tối.
+  const { token } = theme.useToken();
+
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
@@ -294,7 +299,7 @@ const Dashboard = () => {
               <XAxis dataKey="date" />
               <YAxis tickFormatter={formatShort} />
               <Tooltip formatter={revenueTooltip} />
-              <Bar dataKey="revenue" fill="#2ecc71" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="revenue" fill={token.colorPrimary} radius={[4, 4, 0, 0]} />
             </BarChart>
           ) : chartType === "line" ? (
             <LineChart data={revenueData}>
@@ -305,7 +310,7 @@ const Dashboard = () => {
               <Line
                 type="monotone"
                 dataKey="revenue"
-                stroke="#2ecc71"
+                stroke={token.colorPrimary}
                 strokeWidth={2.5}
                 dot={{ r: 4 }}
                 activeDot={{ r: 6 }}
@@ -315,8 +320,8 @@ const Dashboard = () => {
             <AreaChart data={revenueData}>
               <defs>
                 <linearGradient id="revColor" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2ecc71" stopOpacity={0.7} />
-                  <stop offset="95%" stopColor="#2ecc71" stopOpacity={0.05} />
+                  <stop offset="5%" stopColor={token.colorPrimary} stopOpacity={0.7} />
+                  <stop offset="95%" stopColor={token.colorPrimary} stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -326,7 +331,7 @@ const Dashboard = () => {
               <Area
                 type="monotone"
                 dataKey="revenue"
-                stroke="#2ecc71"
+                stroke={token.colorPrimary}
                 fill="url(#revColor)"
                 strokeWidth={2}
               />
